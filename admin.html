@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Surety Dashboard Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --ground:        #f3f3f4;
+    --surface:       #ffffff;
+    --surface-2:     #f7f7f8;
+    --ink:           #1a1a1a;
+    --ink-secondary: #4d4d4d;
+    --muted:         #8a8a8a;
+    --border:        rgba(26,26,26,0.12);
+    --border-strong: rgba(26,26,26,0.22);
+    --accent:        #bc002d;
+    --accent-ink:    #ffffff;
+    --accent-wash:   rgba(188,0,45,0.08);
+    --accent-wash-2: rgba(188,0,45,0.18);
+    --ok:            #1b8a4a;
+    --ok-wash:       rgba(27,138,74,0.10);
+    --ok-wash-2:     rgba(27,138,74,0.28);
+    --shadow-1: 0 1px 2px rgba(26,26,26,0.06);
+    --shadow-2: 0 8px 24px rgba(26,26,26,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --ground:        #121212;
+      --surface:       #1e1e1e;
+      --surface-2:     #262626;
+      --ink:           #f2f2f2;
+      --ink-secondary: #c7c7c7;
+      --muted:         #8f8f8f;
+      --border:        rgba(242,242,242,0.12);
+      --border-strong: rgba(242,242,242,0.22);
+      --accent:        #ff4d68;
+      --accent-ink:    #2a0006;
+      --accent-wash:   rgba(255,77,104,0.14);
+      --accent-wash-2: rgba(255,77,104,0.24);
+      --ok:            #37c273;
+      --ok-wash:       rgba(55,194,115,0.14);
+      --ok-wash-2:     rgba(55,194,115,0.32);
+      --shadow-1: 0 1px 2px rgba(0,0,0,0.30);
+      --shadow-2: 0 12px 32px rgba(0,0,0,0.45);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  .app { max-width: 560px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.005em; margin: 0 0 6px; }
+  .sub { color: var(--ink-secondary); font-size: 14px; margin: 0 0 28px; }
+
+  .lock-screen {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-1);
+    padding: 24px;
+    text-align: center;
+  }
+  .lock-screen p { color: var(--ink-secondary); font-size: 14px; margin: 0 0 16px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-1);
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+  .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+  .card .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; }
+
+  label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-secondary); margin: 0 0 5px; }
+  input[type="text"], input[type="password"], input[type="url"], textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 14px;
+    padding: 9px 11px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--ink);
+    margin-bottom: 14px;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  button {
+    all: unset;
+    cursor: pointer;
+    display: inline-block;
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    background: var(--accent);
+    padding: 9px 18px;
+    border-radius: 20px;
+    text-align: center;
+  }
+  button:hover { opacity: 0.92; }
+  button:disabled { opacity: 0.5; cursor: default; }
+
+  .msg { font-size: 13px; padding: 9px 12px; border-radius: 6px; margin-top: 10px; display: none; }
+  .msg.show { display: block; }
+  .msg.ok { background: var(--ok-wash); border: 1px solid var(--ok-wash-2); color: var(--ok); }
+  .msg.err { background: var(--accent-wash); border: 1px solid var(--accent-wash-2); color: var(--accent); }
+
+  #app-locked { }
+  #app-unlocked { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <h1>Surety Dashboard Admin</h1>
+  <p class="sub">Add companies to the account watchlist, or queue article links for the overnight process.</p>
+
+  <div id="app-locked" class="lock-screen">
+    <p>Enter the password to continue.</p>
+    <input type="password" id="password-input" placeholder="Password" autocomplete="off">
+    <button id="unlock-btn" type="button" style="width:100%;">Unlock</button>
+    <div class="msg err" id="unlock-msg"></div>
+  </div>
+
+  <div id="app-unlocked">
+
+    <div class="card">
+      <h2>Add a company</h2>
+      <p class="hint">Adds to the account_watchlist table. The daily tracker will start searching for news on this company going forward.</p>
+      <label for="company-name">Company name</label>
+      <input type="text" id="company-name" placeholder="e.g. Lennar">
+      <button id="submit-company" type="button">Add company</button>
+      <div class="msg" id="company-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Queue an article</h2>
+      <p class="hint">Replaces the old Google Sheet queue. The overnight process will fetch, score, and add this link the next time it runs.</p>
+      <label for="article-link">Article link</label>
+      <input type="url" id="article-link" placeholder="https://...">
+      <label for="article-notes">Notes (optional)</label>
+      <textarea id="article-notes" placeholder="Any context for why this is worth including"></textarea>
+      <button id="submit-article" type="button">Add to queue</button>
+      <div class="msg" id="article-msg"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+const ENDPOINT = "https://acxdvzcohjayvmqdaoke.supabase.co/functions/v1/queue-submit";
+let PASSWORD = null;
+
+function showMsg(el, text, ok) {
+  el.textContent = text;
+  el.classList.remove("ok", "err");
+  el.classList.add("show", ok ? "ok" : "err");
+}
+
+async function submit(action, fields, msgEl, submitBtn) {
+  submitBtn.disabled = true;
+  try {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: PASSWORD, action, ...fields }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showMsg(msgEl, data.error || "Something went wrong.", false);
+    } else {
+      showMsg(msgEl, data.message || "Done.", true);
+    }
+  } catch (e) {
+    showMsg(msgEl, "Network error — please try again.", false);
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+document.getElementById("unlock-btn").addEventListener("click", async () => {
+  const input = document.getElementById("password-input");
+  const msg = document.getElementById("unlock-msg");
+  const attempt = input.value;
+  if (!attempt) return;
+
+  // Verify by making a harmless request the server rejects unless the
+  // password is correct (unknown action -> 400 only after auth passes;
+  // wrong password -> 401 either way). We don't store or check the
+  // password locally, only the server ever validates it.
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: attempt, action: "__verify__" }),
+  });
+
+  if (res.status === 401) {
+    showMsg(msg, "Incorrect password.", false);
+    return;
+  }
+
+  PASSWORD = attempt;
+  document.getElementById("app-locked").style.display = "none";
+  document.getElementById("app-unlocked").style.display = "block";
+});
+
+document.getElementById("password-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") document.getElementById("unlock-btn").click();
+});
+
+document.getElementById("submit-company").addEventListener("click", async () => {
+  const nameInput = document.getElementById("company-name");
+  const msgEl = document.getElementById("company-msg");
+  const btn = document.getElementById("submit-company");
+  const name = nameInput.value.trim();
+  if (!name) { showMsg(msgEl, "Enter a company name first.", false); return; }
+  await submit("add_company", { company_name: name }, msgEl, btn);
+  nameInput.value = "";
+});
+
+document.getElementById("submit-article").addEventListener("click", async () => {
+  const linkInput = document.getElementById("article-link");
+  const notesInput = document.getElementById("article-notes");
+  const msgEl = document.getElementById("article-msg");
+  const btn = document.getElementById("submit-article");
+  const link = linkInput.value.trim();
+  const notes = notesInput.value.trim();
+  if (!link) { showMsg(msgEl, "Enter an article link first.", false); return; }
+  await submit("add_article", { link, notes }, msgEl, btn);
+  linkInput.value = "";
+  notesInput.value = "";
+});
+</script>
+</body>
+</html>
