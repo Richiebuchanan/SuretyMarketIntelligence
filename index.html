@@ -489,6 +489,11 @@
     .badge { font-size: 10px; overflow-wrap: break-word; }
     .entry-body-content { padding: 12px 12px 16px; }
     .entry-summary, .entry-bullets, .entry-insight { font-size: 12.5px; }
+
+    .analysis-card { padding: 14px 14px 12px; }
+    .analysis-head h2 { font-size: 14.5px; }
+    .analysis-collapse { grid-template-rows: minmax(0, 190px); }
+    .analysis-section p, .analysis-section ul { font-size: 12.5px; }
   }
   .conn-banner {
     margin: 0 0 16px;
@@ -516,6 +521,74 @@
   }
   .disclaimer-banner .icon { flex: none; }
   .disclaimer-banner strong { font-weight: 700; }
+
+  /* ---------- 6-Week Market Analysis ---------- */
+  .analysis-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-1);
+    padding: 18px 20px 16px;
+    margin: 0 0 22px;
+  }
+  .analysis-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 4px; }
+  .analysis-head h2 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+  .analysis-meta {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .analysis-collapse {
+    display: grid;
+    grid-template-rows: minmax(0, 230px);
+    overflow: hidden;
+    position: relative;
+    transition: grid-template-rows 220ms ease;
+  }
+  .analysis-collapse.is-expanded { grid-template-rows: minmax(0, 1fr); }
+  .analysis-collapse-inner { overflow: hidden; min-height: 0; }
+  .analysis-fade {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 64px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), var(--surface));
+    pointer-events: none;
+    transition: opacity 150ms ease;
+  }
+  .analysis-collapse.is-expanded .analysis-fade { opacity: 0; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .analysis-fade { background: linear-gradient(to bottom, rgba(30,30,30,0), var(--surface)); }
+  }
+  :root[data-theme="dark"] .analysis-fade { background: linear-gradient(to bottom, rgba(30,30,30,0), var(--surface)); }
+
+  .analysis-section { margin: 0 0 16px; }
+  .analysis-section:last-child { margin-bottom: 0; }
+  .analysis-section h3 {
+    font-size: 12.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-secondary);
+    margin: 0 0 8px;
+  }
+  .analysis-section p { font-size: 13.5px; color: var(--ink); margin: 0; max-width: 74ch; line-height: 1.6; }
+  .analysis-section ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--ink); line-height: 1.6; }
+  .analysis-section ul li { margin-bottom: 6px; }
+  .analysis-section ul li:last-child { margin-bottom: 0; }
+
+  .analysis-toggle-wrap { text-align: center; margin-top: 10px; }
+  #analysis-toggle {
+    all: unset;
+    cursor: pointer;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--link);
+    padding: 6px 14px;
+    border-radius: 20px;
+  }
+  #analysis-toggle:hover { background: var(--surface-2); }
+  .analysis-empty { font-size: 13px; color: var(--muted); }
 </style>
 
 
@@ -535,6 +608,37 @@
 
     <p class="conn-banner" id="conn-state" hidden></p>
   </header>
+
+  <section class="analysis-card" id="analysis-card" hidden>
+    <div class="analysis-head">
+      <h2>6-Week Market Analysis</h2>
+    </div>
+    <p class="analysis-meta" id="analysis-meta"></p>
+    <div class="analysis-collapse" id="analysis-collapse">
+      <div class="analysis-collapse-inner">
+        <div class="analysis-section" id="analysis-summary-section">
+          <h3>Executive Summary</h3>
+          <p id="analysis-summary"></p>
+        </div>
+        <div class="analysis-section" id="analysis-themes-section">
+          <h3>Key Themes</h3>
+          <ul id="analysis-themes"></ul>
+        </div>
+        <div class="analysis-section" id="analysis-risks-section">
+          <h3>Critical Risk Highlights</h3>
+          <ul id="analysis-risks"></ul>
+        </div>
+        <div class="analysis-section" id="analysis-implications-section">
+          <h3>Underwriting Implications</h3>
+          <p id="analysis-implications"></p>
+        </div>
+      </div>
+      <div class="analysis-fade" id="analysis-fade"></div>
+    </div>
+    <div class="analysis-toggle-wrap">
+      <button id="analysis-toggle" type="button" aria-expanded="false">See more</button>
+    </div>
+  </section>
 
   <div class="filter-section-head">
     <h2>Filters</h2>
@@ -811,6 +915,62 @@ function renderAll() {
   applyFilters();
 }
 
+/* ---------- 6-Week Market Analysis ---------- */
+function fmtAnalysisDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function renderAnalysis(row) {
+  const card = document.getElementById("analysis-card");
+  if (!row || !row.analysis) { card.hidden = true; return; }
+
+  const a = row.analysis;
+  card.hidden = false;
+
+  const periodLabel = a.period_label ? `Last 6 Weeks (${a.period_label})` : "Last 6 Weeks";
+  const countLabel = (a.article_count != null) ? ` • ${a.article_count} articles analyzed` : "";
+  document.getElementById("analysis-meta").textContent =
+    `${periodLabel}${countLabel} • Posted ${fmtAnalysisDate(row.analysis_date)}`;
+
+  document.getElementById("analysis-summary").textContent = a.executive_summary || "";
+  document.getElementById("analysis-implications").textContent = a.underwriting_implications || "";
+
+  const themesEl = document.getElementById("analysis-themes");
+  themesEl.innerHTML = (a.key_themes || []).map(t => `<li>${t}</li>`).join("");
+  document.getElementById("analysis-themes-section").hidden = !(a.key_themes && a.key_themes.length);
+
+  const risksEl = document.getElementById("analysis-risks");
+  risksEl.innerHTML = (a.critical_risks || []).map(r => `<li>${r}</li>`).join("");
+  document.getElementById("analysis-risks-section").hidden = !(a.critical_risks && a.critical_risks.length);
+}
+
+function initAnalysisToggle() {
+  const toggle = document.getElementById("analysis-toggle");
+  const collapse = document.getElementById("analysis-collapse");
+  toggle.addEventListener("click", () => {
+    const expanded = collapse.classList.toggle("is-expanded");
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    toggle.textContent = expanded ? "See less" : "See more";
+  });
+}
+
+async function fetchLatestAnalysis() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("market_analysis")
+      .select("analysis_date, analysis")
+      .order("analysis_date", { ascending: false })
+      .limit(1);
+    if (error || !data || !data.length) { renderAnalysis(null); return; }
+    renderAnalysis(data[0]);
+  } catch (e) {
+    renderAnalysis(null);
+  }
+}
+
 let supabaseClient = null;
 let pollTimer = null;
 
@@ -846,6 +1006,8 @@ function boot() {
 
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  initAnalysisToggle();
+  fetchLatestAnalysis();
   fetchArticles();
   pollTimer = setInterval(fetchArticles, POLL_MS);
 
