@@ -22,11 +22,11 @@
     --muted:         #8a8a8a;
     --border:        rgba(26,26,26,0.12);
     --border-strong: rgba(26,26,26,0.22);
-    --accent:        #e3183c;
+    --accent:        #bc002d;
     --accent-ink:    #ffffff;
-    --accent-wash:   rgba(227,24,60,0.08);
-    --accent-wash-2: rgba(227,24,60,0.18);
-    --link:          #c81238;
+    --accent-wash:   rgba(188,0,45,0.08);
+    --accent-wash-2: rgba(188,0,45,0.18);
+    --link:          #97001f;
 
     /* categorical (documented palette, slots 1-4, fixed order) */
     --cat-1: #2a78d6; /* Contract Surety */
@@ -36,7 +36,7 @@
 
     /* sequential (brand-red ramp, for region bars) */
     --seq-track: #e2e4e6;
-    --seq-fill:  #e3183c;
+    --seq-fill:  #bc002d;
 
     --shadow-1: 0 1px 2px rgba(26,26,26,0.06);
     --shadow-2: 0 8px 24px rgba(26,26,26,0.10);
@@ -53,17 +53,17 @@
       --muted:         #8f8f8f;
       --border:        rgba(242,242,242,0.12);
       --border-strong: rgba(242,242,242,0.22);
-      --accent:        #ff5876;
-      --accent-ink:    #1a0508;
-      --accent-wash:   rgba(255,88,118,0.14);
-      --accent-wash-2: rgba(255,88,118,0.24);
+      --accent:        #ff4d68;
+      --accent-ink:    #2a0006;
+      --accent-wash:   rgba(255,77,104,0.14);
+      --accent-wash-2: rgba(255,77,104,0.24);
       --link:          #ff8fa3;
       --cat-1: #3987e5;
       --cat-2: #d95926;
       --cat-3: #199e70;
       --cat-4: #c98500;
       --seq-track: #2a2a2a;
-      --seq-fill:  #ff5876;
+      --seq-fill:  #ff4d68;
       --shadow-1: 0 1px 2px rgba(0,0,0,0.30);
       --shadow-2: 0 12px 32px rgba(0,0,0,0.45);
     }
@@ -79,17 +79,17 @@
     --muted:         #8f8f8f;
     --border:        rgba(242,242,242,0.12);
     --border-strong: rgba(242,242,242,0.22);
-    --accent:        #ff5876;
-    --accent-ink:    #1a0508;
-    --accent-wash:   rgba(255,88,118,0.14);
-    --accent-wash-2: rgba(255,88,118,0.24);
+    --accent:        #ff4d68;
+    --accent-ink:    #2a0006;
+    --accent-wash:   rgba(255,77,104,0.14);
+    --accent-wash-2: rgba(255,77,104,0.24);
     --link:          #ff8fa3;
     --cat-1: #3987e5;
     --cat-2: #d95926;
     --cat-3: #199e70;
     --cat-4: #c98500;
     --seq-track: #2a2a2a;
-    --seq-fill:  #ff5876;
+    --seq-fill:  #ff4d68;
     --shadow-1: 0 1px 2px rgba(0,0,0,0.30);
     --shadow-2: 0 12px 32px rgba(0,0,0,0.45);
   }
@@ -138,8 +138,8 @@
   }
   .masthead h1 {
     font-size: clamp(28px, 4vw, 38px);
-    font-weight: 600;
-    letter-spacing: -0.01em;
+    font-weight: 700;
+    letter-spacing: -0.005em;
   }
   .mast-sub {
     margin: 10px 0 0;
@@ -508,8 +508,8 @@
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    background: rgba(234, 160, 0, 0.12);
-    border: 1px solid rgba(234, 160, 0, 0.4);
+    background: var(--accent-wash);
+    border: 1px solid var(--accent-wash-2);
     color: var(--ink);
     border-radius: 8px;
     padding: 12px 14px;
@@ -520,7 +520,7 @@
     overflow-wrap: break-word;
   }
   .disclaimer-banner .icon { flex: none; }
-  .disclaimer-banner strong { font-weight: 700; }
+  .disclaimer-banner strong { font-weight: 700; color: var(--accent); }
 
   /* ---------- 6-Week Market Analysis ---------- */
   .analysis-card {
