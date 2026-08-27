@@ -677,7 +677,7 @@
     <div class="cat-toggle" id="cat-toggle" role="group" aria-label="Filter by category"></div>
     <select id="region-select" aria-label="Filter by region"></select>
     <select id="source-select" aria-label="Filter by source"></select>
-    <select id="account-select" aria-label="Filter by account"></select>
+    <select id="account-select" aria-label="Filter by company"></select>
     <div class="date-range">
       <label for="date-from">Published</label>
       <input type="date" id="date-from" aria-label="Published from date">
@@ -764,10 +764,10 @@ function renderSelects() {
   sourceSel.innerHTML = `<option value="all">All sources</option>` + sources.map(s => `<option value="${s}">${s}</option>`).join("");
   sourceSel.addEventListener("change", () => { state.source = sourceSel.value; applyFilters(); });
 
-  const accounts = [...new Set(DATA.map(r => r.related_account).filter(Boolean))].sort();
+  const accounts = [...new Set(DATA.flatMap(r => Array.isArray(r.related_account) ? r.related_account : []).filter(Boolean))].sort();
   const accountSel = document.getElementById("account-select");
   accountSel.hidden = accounts.length === 0;
-  accountSel.innerHTML = `<option value="all">All accounts</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
+  accountSel.innerHTML = `<option value="all">All companies</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
   accountSel.addEventListener("change", () => { state.account = accountSel.value; applyFilters(); });
 
   const minScore = document.getElementById("min-score");
@@ -817,18 +817,21 @@ function renderLedger() {
   const el = document.getElementById("ledger");
   el.innerHTML = sorted.map((r, i) => {
     const catColor = CAT_COLOR[r.relevance_category] || "var(--muted)";
+    const accounts = Array.isArray(r.related_account) ? r.related_account : [];
+    const accountsAttr = accounts.map(a => a.replace(/"/g, '&quot;')).join("||");
+    const accountsText = accounts.join(" ");
     return `
     <article class="entry" data-idx="${i}" data-cat="${r.relevance_category}" data-region="${regionGroup(r.region)}"
       data-source="${r.source_site}" data-score="${r.underwriter_value_score}"
-      data-account="${r.related_account || ""}"
+      data-account="${accountsAttr}"
       data-pubdate="${r.source_publish_date || ""}"
-      data-search="${(r.article_title + " " + r.summary + " " + (r.related_account || "")).toLowerCase().replace(/"/g, '&quot;')}">
+      data-search="${(r.article_title + " " + r.summary + " " + accountsText).toLowerCase().replace(/"/g, '&quot;')}">
       <button class="entry-head" type="button" aria-expanded="false">
         <div class="score-badge" title="Underwriting priority: ${r.underwriter_value_score}/10">${r.underwriter_value_score}<span>${scoreTier(r.underwriter_value_score)}</span></div>
         <div class="entry-main">
           <p class="entry-title">${r.article_title}</p>
           <div class="badges">
-            ${r.related_account ? `<span class="badge account">Account: ${r.related_account}</span>` : ""}
+            ${accounts.map(a => `<span class="badge account">Company: ${a}</span>`).join("")}
             <span class="badge"><span class="dot" style="background:${catColor}"></span>${CAT_SHORT[r.relevance_category] || r.relevance_category}</span>
             <span class="badge">${r.region}</span>
             <span class="badge">${r.source_site}</span>
@@ -869,7 +872,7 @@ function applyFilters() {
     const cat = entry.getAttribute("data-cat");
     const region = entry.getAttribute("data-region");
     const source = entry.getAttribute("data-source");
-    const account = entry.getAttribute("data-account");
+    const accounts = entry.getAttribute("data-account").split("||").filter(Boolean);
     const score = +entry.getAttribute("data-score");
     const search = entry.getAttribute("data-search");
     const pubdate = entry.getAttribute("data-pubdate");
@@ -878,7 +881,7 @@ function applyFilters() {
       (state.cat === "all" || cat === state.cat) &&
       (state.region === "all" || region === state.region) &&
       (state.source === "all" || source === state.source) &&
-      (state.account === "all" || account === state.account) &&
+      (state.account === "all" || accounts.includes(state.account)) &&
       (score >= state.minScore) &&
       (state.search === "" || search.includes(state.search)) &&
       (state.dateFrom === "" || (pubdate && pubdate >= state.dateFrom)) &&
