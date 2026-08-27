@@ -356,6 +356,13 @@
   }
   .badge .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
   .badge.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .badge.account {
+    background: var(--accent-wash);
+    border-color: var(--accent-wash-2);
+    color: var(--accent);
+    font-weight: 600;
+    white-space: normal;
+  }
 
   .meter-wrap { display: none; }
 
@@ -456,6 +463,7 @@
     .cat-toggle,
     #region-select,
     #source-select,
+    #account-select,
     .date-range,
     .stepper,
     #sort-select,
@@ -669,6 +677,7 @@
     <div class="cat-toggle" id="cat-toggle" role="group" aria-label="Filter by category"></div>
     <select id="region-select" aria-label="Filter by region"></select>
     <select id="source-select" aria-label="Filter by source"></select>
+    <select id="account-select" aria-label="Filter by account"></select>
     <div class="date-range">
       <label for="date-from">Published</label>
       <input type="date" id="date-from" aria-label="Published from date">
@@ -709,7 +718,7 @@ function regionGroup(region) {
   return i === -1 ? region : region.slice(0, i);
 }
 
-const state = { search: "", cat: "all", region: "all", source: "all", minScore: 1, dateFrom: "", dateTo: "", sortBy: "newest" };
+const state = { search: "", cat: "all", region: "all", source: "all", account: "all", minScore: 1, dateFrom: "", dateTo: "", sortBy: "newest" };
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -755,6 +764,12 @@ function renderSelects() {
   sourceSel.innerHTML = `<option value="all">All sources</option>` + sources.map(s => `<option value="${s}">${s}</option>`).join("");
   sourceSel.addEventListener("change", () => { state.source = sourceSel.value; applyFilters(); });
 
+  const accounts = [...new Set(DATA.map(r => r.related_account).filter(Boolean))].sort();
+  const accountSel = document.getElementById("account-select");
+  accountSel.hidden = accounts.length === 0;
+  accountSel.innerHTML = `<option value="all">All accounts</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
+  accountSel.addEventListener("change", () => { state.account = accountSel.value; applyFilters(); });
+
   const minScore = document.getElementById("min-score");
   const minScoreOut = document.getElementById("min-score-out");
   minScore.addEventListener("input", () => { state.minScore = +minScore.value; minScoreOut.textContent = minScore.value; applyFilters(); });
@@ -770,9 +785,9 @@ function renderSelects() {
   sortSel.addEventListener("change", () => { state.sortBy = sortSel.value; renderLedger(); applyFilters(); });
 
   document.getElementById("reset-btn").addEventListener("click", () => {
-    state.search = ""; state.cat = "all"; state.region = "all"; state.source = "all"; state.minScore = 1; state.dateFrom = ""; state.dateTo = ""; state.sortBy = "newest";
+    state.search = ""; state.cat = "all"; state.region = "all"; state.source = "all"; state.account = "all"; state.minScore = 1; state.dateFrom = ""; state.dateTo = ""; state.sortBy = "newest";
     document.getElementById("search-input").value = "";
-    regionSel.value = "all"; sourceSel.value = "all";
+    regionSel.value = "all"; sourceSel.value = "all"; accountSel.value = "all";
     minScore.value = 1; minScoreOut.textContent = "1";
     dateFrom.value = ""; dateTo.value = "";
     sortSel.value = "newest";
@@ -805,13 +820,15 @@ function renderLedger() {
     return `
     <article class="entry" data-idx="${i}" data-cat="${r.relevance_category}" data-region="${regionGroup(r.region)}"
       data-source="${r.source_site}" data-score="${r.underwriter_value_score}"
+      data-account="${r.related_account || ""}"
       data-pubdate="${r.source_publish_date || ""}"
-      data-search="${(r.article_title + " " + r.summary).toLowerCase().replace(/"/g, '&quot;')}">
+      data-search="${(r.article_title + " " + r.summary + " " + (r.related_account || "")).toLowerCase().replace(/"/g, '&quot;')}">
       <button class="entry-head" type="button" aria-expanded="false">
         <div class="score-badge" title="Underwriting priority: ${r.underwriter_value_score}/10">${r.underwriter_value_score}<span>${scoreTier(r.underwriter_value_score)}</span></div>
         <div class="entry-main">
           <p class="entry-title">${r.article_title}</p>
           <div class="badges">
+            ${r.related_account ? `<span class="badge account">Account: ${r.related_account}</span>` : ""}
             <span class="badge"><span class="dot" style="background:${catColor}"></span>${CAT_SHORT[r.relevance_category] || r.relevance_category}</span>
             <span class="badge">${r.region}</span>
             <span class="badge">${r.source_site}</span>
@@ -852,6 +869,7 @@ function applyFilters() {
     const cat = entry.getAttribute("data-cat");
     const region = entry.getAttribute("data-region");
     const source = entry.getAttribute("data-source");
+    const account = entry.getAttribute("data-account");
     const score = +entry.getAttribute("data-score");
     const search = entry.getAttribute("data-search");
     const pubdate = entry.getAttribute("data-pubdate");
@@ -860,6 +878,7 @@ function applyFilters() {
       (state.cat === "all" || cat === state.cat) &&
       (state.region === "all" || region === state.region) &&
       (state.source === "all" || source === state.source) &&
+      (state.account === "all" || account === state.account) &&
       (score >= state.minScore) &&
       (state.search === "" || search.includes(state.search)) &&
       (state.dateFrom === "" || (pubdate && pubdate >= state.dateFrom)) &&
@@ -896,6 +915,7 @@ function normalizeRow(r) {
     bullet_points: bp,
     underwriter_insights: r.underwriter_insights,
     flagged_by_user: r.flagged_by_user === true ? "Yes" : r.flagged_by_user === false ? "No" : r.flagged_by_user,
+    related_account: r.related_account || null,
     inserted_at: r.inserted_at
   };
 }
@@ -992,7 +1012,7 @@ let pollTimer = null;
 async function fetchArticles() {
   const { data, error } = await supabaseClient
     .from("surety_articles")
-    .select("date_found, article_title, link, source_site, source_publish_date, region, relevance_category, underwriter_value_score, score_rationale, summary, bullet_points, underwriter_insights, flagged_by_user, inserted_at")
+    .select("date_found, article_title, link, source_site, source_publish_date, region, relevance_category, underwriter_value_score, score_rationale, summary, bullet_points, underwriter_insights, flagged_by_user, related_account, inserted_at")
     .order("date_found", { ascending: false })
     .order("underwriter_value_score", { ascending: false });
 
