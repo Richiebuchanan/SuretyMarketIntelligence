@@ -718,7 +718,15 @@ function regionGroup(region) {
   return i === -1 ? region : region.slice(0, i);
 }
 
-const state = { search: "", cat: "all", region: "all", source: "all", account: "all", minScore: 1, dateFrom: "", dateTo: "", sortBy: "newest" };
+function daysAgoISO(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+const DEFAULT_DATE_FROM = daysAgoISO(42); // six weeks
+
+const state = { search: "", cat: "all", region: "all", source: "all", account: "all", minScore: 1, dateFrom: DEFAULT_DATE_FROM, dateTo: "", sortBy: "newest" };
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -785,11 +793,11 @@ function renderSelects() {
   sortSel.addEventListener("change", () => { state.sortBy = sortSel.value; renderLedger(); applyFilters(); });
 
   document.getElementById("reset-btn").addEventListener("click", () => {
-    state.search = ""; state.cat = "all"; state.region = "all"; state.source = "all"; state.account = "all"; state.minScore = 1; state.dateFrom = ""; state.dateTo = ""; state.sortBy = "newest";
+    state.search = ""; state.cat = "all"; state.region = "all"; state.source = "all"; state.account = "all"; state.minScore = 1; state.dateFrom = DEFAULT_DATE_FROM; state.dateTo = ""; state.sortBy = "newest";
     document.getElementById("search-input").value = "";
     regionSel.value = "all"; sourceSel.value = "all"; accountSel.value = "all";
     minScore.value = 1; minScoreOut.textContent = "1";
-    dateFrom.value = ""; dateTo.value = "";
+    dateFrom.value = DEFAULT_DATE_FROM; dateTo.value = "";
     sortSel.value = "newest";
     document.querySelectorAll(".cat-btn").forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cat") === "all"));
     renderLedger();
@@ -1035,6 +1043,7 @@ async function fetchArticles() {
 
 function boot() {
   renderConnState("loading", "Connecting to Supabase…");
+  document.getElementById("date-from").value = state.dateFrom;
   renderAll();
 
   if (typeof window.supabase === "undefined" || !window.supabase.createClient) {
