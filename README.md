@@ -1,6 +1,6 @@
 # Surety Market Intelligence
 
-A live dashboard for tracking surety-relevant industry news and top-account risk signals, built for underwriting use at Sompo. Automated news discovery and analysis is handled by Claude; this repo currently hosts the front-end dashboard, with the goal of eventually managing the full pipeline (site + automation config) from here.
+A live dashboard for tracking surety-relevant industry news and top-account risk signals, built for surety industry underwriting use. Automated news discovery and analysis is handled by Claude; this repo currently hosts the front-end dashboard, with the goal of eventually managing the full pipeline (site + automation config) from here.
 
 **Live site:** https://richiebuchanan.github.io/SuretyMarketIntelligence/
 
