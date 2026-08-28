@@ -296,6 +296,15 @@
     border-radius: 8px;
     box-shadow: var(--shadow-1);
     overflow: hidden;
+    scroll-margin-top: 96px;
+  }
+  @keyframes entry-cite-flash {
+    0%   { background: var(--accent-wash-2); box-shadow: 0 0 0 2px var(--accent-wash-2); }
+    100% { background: var(--surface); box-shadow: 0 0 0 0 transparent; }
+  }
+  .entry.is-highlighted { animation: entry-cite-flash 1.8s ease-out; }
+  @media (prefers-reduced-motion: reduce) {
+    .entry.is-highlighted { animation: none; background: var(--accent-wash); }
   }
   .entry-head {
     all: unset;
@@ -500,6 +509,7 @@
     .badge { font-size: 10px; overflow-wrap: break-word; }
     .entry-body-content { padding: 12px 12px 16px; }
     .entry-summary, .entry-bullets, .entry-insight { font-size: 12.5px; }
+    .entry { scroll-margin-top: 16px; }
 
     .analysis-card { padding: 14px 14px 12px; }
     .analysis-head h2 { font-size: 14.5px; }
@@ -597,6 +607,26 @@
     font-weight: 700;
     line-height: 1.6;
   }
+
+  /* Citation markers — link an analysis assertion back to the article(s) it's grounded in */
+  .cite {
+    margin-left: 3px;
+    font-size: 10.5px;
+    font-weight: 500;
+    vertical-align: super;
+    line-height: 1;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .cite a {
+    color: var(--link);
+    text-decoration: none;
+    font-weight: 700;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    padding: 0 1px;
+  }
+  .cite a:hover, .cite a:focus-visible { text-decoration: underline; }
+  .cite a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
 
   .analysis-toggle-wrap { text-align: left; margin-top: 10px; }
   #analysis-toggle {
@@ -829,7 +859,7 @@ function renderLedger() {
     const accountsAttr = accounts.map(a => a.replace(/"/g, '&quot;')).join("||");
     const accountsText = accounts.join(" ");
     return `
-    <article class="entry" data-idx="${i}" data-cat="${r.relevance_category}" data-region="${regionGroup(r.region)}"
+    <article class="entry" id="article-${r.id}" data-id="${r.id}" data-idx="${i}" data-cat="${r.relevance_category}" data-region="${regionGroup(r.region)}"
       data-source="${r.source_site}" data-score="${r.underwriter_value_score}"
       data-account="${accountsAttr}"
       data-pubdate="${r.source_publish_date || ""}"
@@ -872,6 +902,38 @@ function renderLedger() {
   });
 }
 
+/* ---------- Citation jump (analysis assertion -> source article card) ---------- */
+function jumpToArticle(id, evt) {
+  if (evt) evt.preventDefault();
+  let entry = document.getElementById("article-" + id);
+  if (!entry) return false;
+
+  // If current filters are hiding the cited article, clear them so it's actually visible.
+  if (entry.hidden) {
+    const resetBtn = document.getElementById("reset-btn");
+    if (resetBtn) resetBtn.click();
+    entry = document.getElementById("article-" + id); // filters reset rebuilds the ledger DOM
+    if (!entry) return false;
+  }
+
+  const head = entry.querySelector(".entry-head");
+  if (!entry.classList.contains("is-open")) {
+    entry.classList.add("is-open");
+    if (head) head.setAttribute("aria-expanded", "true");
+  }
+
+  entry.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  entry.classList.remove("is-highlighted");
+  void entry.offsetWidth; // restart the flash animation if the same citation is clicked twice
+  entry.classList.add("is-highlighted");
+  setTimeout(() => entry.classList.remove("is-highlighted"), 1900);
+
+  if (head) head.focus({ preventScroll: true });
+  return false;
+}
+window.jumpToArticle = jumpToArticle;
+
 /* ---------- Apply filters ---------- */
 function applyFilters() {
   const entries = document.querySelectorAll(".entry");
@@ -913,6 +975,7 @@ function normalizeRow(r) {
     ? r.bullet_points.split("\n").map(s => s.replace(/^-\s*/, "").trim()).filter(Boolean)
     : Array.isArray(r.bullet_points) ? r.bullet_points : [];
   return {
+    id: r.id,
     date_found: r.date_found,
     article_title: r.article_title,
     link: r.link,
@@ -969,6 +1032,42 @@ function fmtAnalysisDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+// Renders one assertion's footnote-style citation marks, e.g. "[1, 2]", each number
+// linking to the corresponding article card. `citeIndex` assigns numbers in first-seen
+// order across the whole analysis card, so an article cited twice keeps one number.
+function citeMarks(citeIndex, articleIds) {
+  if (!Array.isArray(articleIds) || !articleIds.length) return "";
+  const links = articleIds.map(id => {
+    if (!citeIndex.has(id)) citeIndex.set(id, citeIndex.size + 1);
+    const n = citeIndex.get(id);
+    return `<a href="#article-${id}" onclick="return jumpToArticle(${id}, event)" title="Jump to source article">${n}</a>`;
+  }).join(",");
+  return ` <span class="cite">[${links}]</span>`;
+}
+
+// executive_summary/underwriting_implications are arrays of {text, article_ids} sentences
+// (or plain strings from older, uncited analyses) — concatenated into one paragraph.
+function renderCitedParagraph(items, citeIndex) {
+  if (!items) return "";
+  if (typeof items === "string") return escapeHtml(items); // legacy plain-string format
+  if (!Array.isArray(items)) return "";
+  return items.map(it =>
+    (typeof it === "string") ? escapeHtml(it) : `${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}`
+  ).join(" ");
+}
+
+// key_themes/critical_risks are arrays of {text, article_ids} bullets (or plain strings, legacy).
+function renderCitedList(items, citeIndex) {
+  if (!Array.isArray(items)) return "";
+  return items.map(it =>
+    (typeof it === "string") ? `<li>${escapeHtml(it)}</li>` : `<li>${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}</li>`
+  ).join("");
+}
+
 function renderAnalysis(row) {
   const card = document.getElementById("analysis-card");
   if (!row || !row.analysis) { card.hidden = true; return; }
@@ -981,16 +1080,20 @@ function renderAnalysis(row) {
   document.getElementById("analysis-meta").textContent =
     `${periodLabel}${countLabel} • Posted ${fmtAnalysisDate(row.analysis_date)}`;
 
-  document.getElementById("analysis-summary").textContent = a.executive_summary || "";
-  document.getElementById("analysis-implications").textContent = a.underwriting_implications || "";
+  // Fresh footnote numbering each render, assigned in reading order: summary -> themes -> risks -> implications.
+  const citeIndex = new Map();
+
+  document.getElementById("analysis-summary").innerHTML = renderCitedParagraph(a.executive_summary, citeIndex);
 
   const themesEl = document.getElementById("analysis-themes");
-  themesEl.innerHTML = (a.key_themes || []).map(t => `<li>${t}</li>`).join("");
+  themesEl.innerHTML = renderCitedList(a.key_themes, citeIndex);
   document.getElementById("analysis-themes-section").hidden = !(a.key_themes && a.key_themes.length);
 
   const risksEl = document.getElementById("analysis-risks");
-  risksEl.innerHTML = (a.critical_risks || []).map(r => `<li>${r}</li>`).join("");
+  risksEl.innerHTML = renderCitedList(a.critical_risks, citeIndex);
   document.getElementById("analysis-risks-section").hidden = !(a.critical_risks && a.critical_risks.length);
+
+  document.getElementById("analysis-implications").innerHTML = renderCitedParagraph(a.underwriting_implications, citeIndex);
 }
 
 function initAnalysisToggle() {
@@ -1007,8 +1110,8 @@ async function fetchLatestAnalysis() {
   try {
     const { data, error } = await supabaseClient
       .from("market_analysis")
-      .select("analysis_date, analysis")
-      .order("analysis_date", { ascending: false })
+      .select("analysis_date, analysis, inserted_at")
+      .order("inserted_at", { ascending: false })
       .limit(1);
     if (error || !data || !data.length) { renderAnalysis(null); return; }
     renderAnalysis(data[0]);
@@ -1023,7 +1126,7 @@ let pollTimer = null;
 async function fetchArticles() {
   const { data, error } = await supabaseClient
     .from("surety_articles")
-    .select("date_found, article_title, link, source_site, source_publish_date, region, relevance_category, underwriter_value_score, score_rationale, summary, bullet_points, underwriter_insights, flagged_by_user, related_account, inserted_at")
+    .select("id, date_found, article_title, link, source_site, source_publish_date, region, relevance_category, underwriter_value_score, score_rationale, summary, bullet_points, underwriter_insights, flagged_by_user, related_account, inserted_at")
     .order("date_found", { ascending: false })
     .order("underwriter_value_score", { ascending: false });
 
