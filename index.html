@@ -852,6 +852,14 @@ function sortedData() {
 
 function renderLedger() {
   const sorted = sortedData();
+  // Remember which cards are open (by stable article id) so a background poll
+  // refresh — this runs every POLL_MS on a timer — doesn't silently collapse
+  // something the user (or a citation jump) just opened. Only the user's own
+  // click on the chevron, or clicking it again, should close a card.
+  const openIds = new Set(
+    Array.from(document.querySelectorAll(".entry.is-open")).map(e => e.getAttribute("data-id"))
+  );
+
   const el = document.getElementById("ledger");
   el.innerHTML = sorted.map((r, i) => {
     const catColor = CAT_COLOR[r.relevance_category] || "var(--muted)";
@@ -892,6 +900,17 @@ function renderLedger() {
       </div>
     </article>`;
   }).join("");
+
+  // Re-apply the open state captured above to the freshly-rendered cards.
+  if (openIds.size) {
+    el.querySelectorAll(".entry").forEach(entry => {
+      if (openIds.has(entry.getAttribute("data-id"))) {
+        entry.classList.add("is-open");
+        const head = entry.querySelector(".entry-head");
+        if (head) head.setAttribute("aria-expanded", "true");
+      }
+    });
+  }
 
   el.querySelectorAll(".entry-head").forEach(head => {
     head.addEventListener("click", () => {
