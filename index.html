@@ -593,9 +593,8 @@
     color: var(--accent);
     margin: 0 0 8px;
   }
-  .analysis-section p { font-size: 13.5px; color: var(--ink); margin: 0; max-width: 74ch; line-height: 1.6; }
-  .analysis-section ul { list-style: none; margin: 0; padding-left: 0; font-size: 13.5px; color: var(--ink); line-height: 1.6; }
-  .analysis-section ul li { position: relative; padding-left: 26px; margin-bottom: 8px; }
+  .analysis-section ul { list-style: none; margin: 0; padding-left: 0; font-size: 13.5px; color: var(--ink); line-height: 1.5; }
+  .analysis-section ul li { position: relative; padding-left: 26px; margin-bottom: 10px; max-width: 66ch; }
   .analysis-section ul li:last-child { margin-bottom: 0; }
   .analysis-section ul li::before {
     content: "\2192";
@@ -605,8 +604,25 @@
     color: var(--accent);
     font-size: 12px;
     font-weight: 700;
-    line-height: 1.6;
+    line-height: 1.5;
   }
+  /* Underwriting Implications uses numbered markers instead of arrows -- signals a priority-ordered checklist rather than a flat theme list */
+  .analysis-section ul.is-ordered { counter-reset: impl; }
+  .analysis-section ul.is-ordered li { counter-increment: impl; padding-left: 24px; }
+  .analysis-section ul.is-ordered li::before {
+    content: counter(impl);
+    left: 0;
+    width: 17px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    text-align: center;
+    background: var(--surface-2);
+    border-radius: 50%;
+    line-height: 17px;
+    top: 1px;
+  }
+  /* Short bold lead-in before each bullet's detail, e.g. "Data center boom:" -- gives the eye something to scan for */
+  .analysis-item-label { font-weight: 700; color: var(--ink); margin-right: 4px; }
 
   /* Citation markers — link an analysis assertion back to the article(s) it's grounded in */
   .cite {
@@ -671,7 +687,7 @@
       <div class="analysis-collapse-inner">
         <div class="analysis-section" id="analysis-summary-section">
           <h3>Executive Summary</h3>
-          <p id="analysis-summary"></p>
+          <ul id="analysis-summary"></ul>
         </div>
         <div class="analysis-section" id="analysis-themes-section">
           <h3>Key Themes</h3>
@@ -683,7 +699,7 @@
         </div>
         <div class="analysis-section" id="analysis-implications-section">
           <h3>Underwriting Implications</h3>
-          <p id="analysis-implications"></p>
+          <ul id="analysis-implications" class="is-ordered"></ul>
         </div>
       </div>
       <div class="analysis-fade" id="analysis-fade"></div>
@@ -1068,23 +1084,17 @@ function citeMarks(citeIndex, articleIds) {
   return ` <span class="cite">[${links}]</span>`;
 }
 
-// executive_summary/underwriting_implications are arrays of {text, article_ids} sentences
-// (or plain strings from older, uncited analyses) — concatenated into one paragraph.
-function renderCitedParagraph(items, citeIndex) {
-  if (!items) return "";
-  if (typeof items === "string") return escapeHtml(items); // legacy plain-string format
-  if (!Array.isArray(items)) return "";
-  return items.map(it =>
-    (typeof it === "string") ? escapeHtml(it) : `${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}`
-  ).join(" ");
-}
-
-// key_themes/critical_risks are arrays of {text, article_ids} bullets (or plain strings, legacy).
+// All four analysis sections are arrays of short, independent bullets — {label?, text, article_ids}
+// (plain strings from older, uncited analyses still render fine, just without a bold lead-in or citations).
+// `label` is an optional few-word kicker ("Data centers dominate:") that gives the eye something to
+// scan for before the full sentence, instead of one run-on paragraph.
 function renderCitedList(items, citeIndex) {
   if (!Array.isArray(items)) return "";
-  return items.map(it =>
-    (typeof it === "string") ? `<li>${escapeHtml(it)}</li>` : `<li>${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}</li>`
-  ).join("");
+  return items.map(it => {
+    if (typeof it === "string") return `<li>${escapeHtml(it)}</li>`;
+    const label = it.label ? `<span class="analysis-item-label">${escapeHtml(it.label)}:</span> ` : "";
+    return `<li>${label}${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}</li>`;
+  }).join("");
 }
 
 function renderAnalysis(row) {
@@ -1102,7 +1112,7 @@ function renderAnalysis(row) {
   // Fresh footnote numbering each render, assigned in reading order: summary -> themes -> risks -> implications.
   const citeIndex = new Map();
 
-  document.getElementById("analysis-summary").innerHTML = renderCitedParagraph(a.executive_summary, citeIndex);
+  document.getElementById("analysis-summary").innerHTML = renderCitedList(a.executive_summary, citeIndex);
 
   const themesEl = document.getElementById("analysis-themes");
   themesEl.innerHTML = renderCitedList(a.key_themes, citeIndex);
@@ -1112,7 +1122,7 @@ function renderAnalysis(row) {
   risksEl.innerHTML = renderCitedList(a.critical_risks, citeIndex);
   document.getElementById("analysis-risks-section").hidden = !(a.critical_risks && a.critical_risks.length);
 
-  document.getElementById("analysis-implications").innerHTML = renderCitedParagraph(a.underwriting_implications, citeIndex);
+  document.getElementById("analysis-implications").innerHTML = renderCitedList(a.underwriting_implications, citeIndex);
 }
 
 function initAnalysisToggle() {
