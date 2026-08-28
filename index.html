@@ -593,6 +593,7 @@
     color: var(--accent);
     margin: 0 0 8px;
   }
+  .analysis-section p { font-size: 13.5px; color: var(--ink); margin: 0; max-width: 74ch; line-height: 1.65; }
   .analysis-section ul { list-style: none; margin: 0; padding-left: 0; font-size: 13.5px; color: var(--ink); line-height: 1.5; }
   .analysis-section ul li { position: relative; padding-left: 26px; margin-bottom: 10px; max-width: 66ch; }
   .analysis-section ul li:last-child { margin-bottom: 0; }
@@ -687,7 +688,7 @@
       <div class="analysis-collapse-inner">
         <div class="analysis-section" id="analysis-summary-section">
           <h3>Executive Summary</h3>
-          <ul id="analysis-summary"></ul>
+          <p id="analysis-summary"></p>
         </div>
         <div class="analysis-section" id="analysis-themes-section">
           <h3>Key Themes</h3>
@@ -1084,10 +1085,10 @@ function citeMarks(citeIndex, articleIds) {
   return ` <span class="cite">[${links}]</span>`;
 }
 
-// All four analysis sections are arrays of short, independent bullets — {label?, text, article_ids}
-// (plain strings from older, uncited analyses still render fine, just without a bold lead-in or citations).
-// `label` is an optional few-word kicker ("Data centers dominate:") that gives the eye something to
-// scan for before the full sentence, instead of one run-on paragraph.
+// Key Themes / Critical Risks / Underwriting Implications are arrays of short, independent
+// bullets — {label?, text, article_ids} (plain strings from older, uncited analyses still
+// render fine, just without a bold lead-in or citations). `label` is an optional few-word
+// kicker ("Data centers dominate:") that gives the eye something to scan for.
 function renderCitedList(items, citeIndex) {
   if (!Array.isArray(items)) return "";
   return items.map(it => {
@@ -1095,6 +1096,20 @@ function renderCitedList(items, citeIndex) {
     const label = it.label ? `<span class="analysis-item-label">${escapeHtml(it.label)}:</span> ` : "";
     return `<li>${label}${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}</li>`;
   }).join("");
+}
+
+// Executive Summary is different on purpose: it's a genuine narrative paragraph (the "story"
+// the 6 weeks of articles are telling), not a bulleted fact list — so its sentences are joined
+// into flowing prose with no bold labels breaking up the read. It's still an array of
+// {text, article_ids} sentences under the hood, each carrying its own citation(s); the writer
+// is expected to make consecutive sentences transition into each other.
+function renderCitedParagraph(items, citeIndex) {
+  if (!items) return "";
+  if (typeof items === "string") return escapeHtml(items); // legacy plain-string format
+  if (!Array.isArray(items)) return "";
+  return items.map(it =>
+    (typeof it === "string") ? escapeHtml(it) : `${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}`
+  ).join(" ");
 }
 
 function renderAnalysis(row) {
@@ -1112,7 +1127,7 @@ function renderAnalysis(row) {
   // Fresh footnote numbering each render, assigned in reading order: summary -> themes -> risks -> implications.
   const citeIndex = new Map();
 
-  document.getElementById("analysis-summary").innerHTML = renderCitedList(a.executive_summary, citeIndex);
+  document.getElementById("analysis-summary").innerHTML = renderCitedParagraph(a.executive_summary, citeIndex);
 
   const themesEl = document.getElementById("analysis-themes");
   themesEl.innerHTML = renderCitedList(a.key_themes, citeIndex);
