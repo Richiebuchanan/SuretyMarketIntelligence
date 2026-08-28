@@ -85,7 +85,7 @@
   .card .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; }
 
   label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-secondary); margin: 0 0 5px; }
-  input[type="text"], input[type="password"], input[type="url"], textarea {
+  input[type="text"], input[type="password"], input[type="url"], textarea, select {
     width: 100%;
     font: inherit;
     font-size: 14px;
@@ -96,8 +96,10 @@
     color: var(--ink);
     margin-bottom: 14px;
   }
+  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) center, calc(100% - 13px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
   textarea { resize: vertical; min-height: 60px; }
-  input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .field-hint { font-size: 11.5px; color: var(--muted); margin: -10px 0 14px; }
 
   button {
     all: unset;
@@ -128,7 +130,7 @@
 <div class="app">
 
   <h1>Surety Dashboard Admin</h1>
-  <p class="sub">Add companies to the account watchlist, or queue article links for the overnight process.</p>
+  <p class="sub">Add companies to the account watchlist, queue article links, or add a trade publication for the overnight process to check directly each morning.</p>
 
   <div id="app-locked" class="lock-screen">
     <p>Enter the password to continue.</p>
@@ -157,6 +159,30 @@
       <textarea id="article-notes" placeholder="Any context for why this is worth including"></textarea>
       <button id="submit-article" type="button">Add to queue</button>
       <div class="msg" id="article-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>Add a trade publication</h2>
+      <p class="hint">Adds to the target_trade_publications table. Each morning the daily tracker fetches this source directly, in addition to keyword search — good for a site with a genuine, recurring surety/construction-industry beat.</p>
+
+      <label for="pub-name">Publication name</label>
+      <input type="text" id="pub-name" placeholder="e.g. Surety Bond Quarterly">
+
+      <label for="pub-url">Feed or listing URL</label>
+      <input type="url" id="pub-url" placeholder="https://...">
+      <p class="field-hint">If it has an RSS/Atom feed, use that URL (usually ends in /feed/ or /rss). Otherwise use the page that lists its most recent articles.</p>
+
+      <label for="pub-type">Source type</label>
+      <select id="pub-type">
+        <option value="RSS">RSS / Atom feed</option>
+        <option value="HTML_LISTING">Web page (no feed — just a listing page)</option>
+      </select>
+
+      <label for="pub-notes">Notes (optional)</label>
+      <textarea id="pub-notes" placeholder="Any caveats, e.g. a specific feed path to use or known quirks"></textarea>
+
+      <button id="submit-publication" type="button">Add publication</button>
+      <div class="msg" id="publication-msg"></div>
     </div>
 
   </div>
@@ -245,6 +271,26 @@ document.getElementById("submit-article").addEventListener("click", async () => 
   await submit("add_article", { link, notes }, msgEl, btn);
   linkInput.value = "";
   notesInput.value = "";
+});
+
+document.getElementById("submit-publication").addEventListener("click", async () => {
+  const nameInput = document.getElementById("pub-name");
+  const urlInput = document.getElementById("pub-url");
+  const typeInput = document.getElementById("pub-type");
+  const notesInput = document.getElementById("pub-notes");
+  const msgEl = document.getElementById("publication-msg");
+  const btn = document.getElementById("submit-publication");
+  const siteName = nameInput.value.trim();
+  const listingUrl = urlInput.value.trim();
+  const sourceType = typeInput.value;
+  const notes = notesInput.value.trim();
+  if (!siteName) { showMsg(msgEl, "Enter a publication name first.", false); return; }
+  if (!listingUrl) { showMsg(msgEl, "Enter a feed or listing URL first.", false); return; }
+  await submit("add_publication", { site_name: siteName, listing_url: listingUrl, source_type: sourceType, notes }, msgEl, btn);
+  nameInput.value = "";
+  urlInput.value = "";
+  notesInput.value = "";
+  typeInput.value = "RSS";
 });
 </script>
 </body>
