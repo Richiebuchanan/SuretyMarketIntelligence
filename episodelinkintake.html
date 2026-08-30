@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Podcast Link Intake</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #f3f3f4; --surface: #ffffff; --surface-2: #f7f7f8;
+    --ink: #1a1a1a; --ink-secondary: #4d4d4d; --muted: #8a8a8a;
+    --border: rgba(26,26,26,0.12); --border-strong: rgba(26,26,26,0.22);
+    --accent: #bc002d; --accent-wash: rgba(188,0,45,0.08); --accent-wash-2: rgba(188,0,45,0.18);
+    --ok: #1baf7a; --ok-wash: rgba(27,175,122,0.1);
+    --shadow-1: 0 1px 2px rgba(26,26,26,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #121212; --surface: #1e1e1e; --surface-2: #262626;
+      --ink: #f2f2f2; --ink-secondary: #c7c7c7; --muted: #8f8f8f;
+      --border: rgba(242,242,242,0.12); --border-strong: rgba(242,242,242,0.22);
+      --accent: #ff4d68; --accent-wash: rgba(255,77,104,0.14); --accent-wash-2: rgba(255,77,104,0.24);
+      --ok: #3ecf99; --ok-wash: rgba(62,207,153,0.12);
+      --shadow-1: 0 1px 2px rgba(0,0,0,0.3);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: "Inter", system-ui, sans-serif; line-height: 1.5;
+  }
+  .app { max-width: 640px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+  .sub { color: var(--ink-secondary); font-size: 13.5px; margin: 0 0 24px; max-width: 56ch; }
+  .warn {
+    background: var(--accent-wash); border: 1px solid var(--accent-wash-2); border-radius: 8px;
+    padding: 10px 14px; font-size: 12.5px; color: var(--ink-secondary); margin-bottom: 22px;
+  }
+  .gate { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; box-shadow: var(--shadow-1); max-width: 360px; }
+  .gate label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+  .gate input {
+    width: 100%; font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 6px;
+    border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--ink); margin-bottom: 10px;
+  }
+  button {
+    font: inherit; font-size: 13.5px; font-weight: 600; padding: 8px 16px; border-radius: 6px;
+    border: 1px solid var(--border-strong); background: var(--ink); color: var(--ground); cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .gate-error { color: var(--accent); font-size: 12.5px; margin: 0 0 10px; display: none; }
+
+  #panel { display: none; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow-1);
+  }
+  .card h3 { font-size: 14px; margin: 0 0 4px; }
+  .card .meta { font-size: 12px; color: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; margin-bottom: 10px; }
+  .card .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .card input[type="url"] {
+    flex: 1 1 260px; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 6px;
+    border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--ink);
+  }
+  .status { font-size: 12px; margin-top: 8px; display: none; }
+  .status.ok { color: var(--ok); display: block; }
+  .status.err { color: var(--accent); display: block; }
+  .empty { color: var(--muted); font-size: 13.5px; padding: 20px; text-align: center; border: 1px dashed var(--border-strong); border-radius: 8px; }
+  a.showlink { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Podcast Link Intake</h1>
+  <p class="sub">Episodes the daily automation has detected but can't yet find a YouTube link for on its own. Paste the video URL and submit — the next scheduled run will fetch the transcript, score it, and publish it to the Podcasts page.</p>
+
+  <div class="warn">
+    This page is unlisted, not truly access-controlled. The passphrase below is a speed bump, not real security — anyone with this exact URL and the passphrase can submit a link. Submissions only ever <em>add a row to a review queue</em>; they can't read, edit, or delete anything already on the site, so the worst case of a bad-faith submission is one junk queue entry to ignore.
+  </div>
+
+  <div class="gate" id="gate">
+    <label for="pass">Passphrase</label>
+    <input id="pass" type="password" autocomplete="off">
+    <p class="gate-error" id="gate-error">That's not it — try again.</p>
+    <button id="gate-btn" type="button">Unlock</button>
+  </div>
+
+  <div id="panel">
+    <div id="list"></div>
+  </div>
+</div>
+
+<script>
+  // ---- Change this to whatever you like; it's just a speed bump (see warning above), not real auth. ----
+  const PASSPHRASE = "surety2026";
+
+  const SUPABASE_URL = "https://acxdvzcohjayvmqdaoke.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_2n567u9zKgZ-L-M_yGRf5Q_HEV_p1-f";
+  let supabaseClient = null;
+
+  document.getElementById("gate-btn").addEventListener("click", unlock);
+  document.getElementById("pass").addEventListener("keydown", (e) => { if (e.key === "Enter") unlock(); });
+
+  function unlock() {
+    const val = document.getElementById("pass").value;
+    if (val !== PASSPHRASE) {
+      document.getElementById("gate-error").style.display = "block";
+      return;
+    }
+    document.getElementById("gate").style.display = "none";
+    document.getElementById("panel").style.display = "block";
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    loadPending();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  }
+
+  async function loadPending() {
+    const list = document.getElementById("list");
+    list.innerHTML = "<p class=\"empty\">Loading…</p>";
+    const { data, error } = await supabaseClient
+      .from("podcast_episodes")
+      .select("id, episode_number, title, publish_date, link")
+      .eq("transcript_status", "pending_link")
+      .order("episode_number", { ascending: false });
+
+    if (error) {
+      list.innerHTML = `<p class="empty">Couldn't load episodes (${escapeHtml(error.message)}). Reload to retry.</p>`;
+      return;
+    }
+    if (!data || !data.length) {
+      list.innerHTML = `<p class="empty">Nothing pending — every known episode already has a YouTube link on file.</p>`;
+      return;
+    }
+
+    list.innerHTML = data.map(ep => `
+      <div class="card" data-ep="${ep.episode_number}">
+        <h3>#${ep.episode_number} — ${escapeHtml(ep.title)}</h3>
+        <div class="meta">${ep.publish_date || ""} · <a class="showlink" href="${ep.link}" target="_blank" rel="noopener">show notes ↗</a></div>
+        <div class="row">
+          <input type="url" placeholder="https://www.youtube.com/watch?v=…" data-input>
+          <button type="button" data-submit>Submit link</button>
+        </div>
+        <p class="status" data-status></p>
+      </div>
+    `).join("");
+
+    list.querySelectorAll(".card").forEach(card => {
+      const btn = card.querySelector("[data-submit]");
+      const input = card.querySelector("[data-input]");
+      const status = card.querySelector("[data-status]");
+      btn.addEventListener("click", async () => {
+        const url = input.value.trim();
+        status.className = "status";
+        if (!/^https?:\/\/(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)/.test(url)) {
+          status.textContent = "That doesn't look like a YouTube video URL (expected youtube.com/watch?v=… or youtu.be/…).";
+          status.classList.add("err");
+          return;
+        }
+        btn.disabled = true;
+        const episodeNumber = parseInt(card.getAttribute("data-ep"), 10);
+        const { error } = await supabaseClient.from("podcast_link_submissions").insert({ episode_number: episodeNumber, youtube_url: url });
+        btn.disabled = false;
+        if (error) {
+          status.textContent = "Submit failed: " + error.message;
+          status.classList.add("err");
+          return;
+        }
+        status.textContent = "Submitted — the next scheduled run will fetch and score the transcript.";
+        status.classList.add("ok");
+        input.value = "";
+        input.disabled = true;
+        btn.disabled = true;
+        btn.textContent = "Submitted";
+      });
+    });
+  }
+</script>
+</body>
+</html>

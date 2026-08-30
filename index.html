@@ -157,6 +157,10 @@
     border-top: 1px solid var(--border);
     margin: 16px 0 16px;
   }
+  .site-nav { display: flex; gap: 14px; margin-top: 12px; font-size: 13px; font-weight: 600; }
+  .site-nav a { text-decoration: none; color: var(--ink-secondary); padding: 4px 0; border-bottom: 2px solid transparent; }
+  .site-nav a:hover { color: var(--ink); }
+  .site-nav a.is-current { color: var(--accent); border-bottom-color: var(--accent); }
 
   /* ---------- Filter bar ---------- */
   .priority-note {
@@ -668,6 +672,10 @@
     <h1>Surety Market Intelligence</h1>
     <p class="mast-sub">Surety news, summarized and prioritized for underwriting. Refreshed Daily.</p>
     <div class="mast-meta" id="mast-meta">Last Update: —</div>
+    <nav class="site-nav">
+      <a href="index.html" class="is-current">Articles</a>
+      <a href="podcasts.html">Podcasts</a>
+    </nav>
 
     <div class="masthead-divider"></div>
 
@@ -1072,21 +1080,36 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
 
-// Renders one assertion's footnote-style citation marks, e.g. "[1, 2]", each number
-// linking to the corresponding article card. `citeIndex` assigns numbers in first-seen
-// order across the whole analysis card, so an article cited twice keeps one number.
-function citeMarks(citeIndex, articleIds) {
-  if (!Array.isArray(articleIds) || !articleIds.length) return "";
-  const links = articleIds.map(id => {
-    if (!citeIndex.has(id)) citeIndex.set(id, citeIndex.size + 1);
-    const n = citeIndex.get(id);
-    return `<a href="#article-${id}" onclick="return jumpToArticle(${id}, event)" title="Jump to source article">${n}</a>`;
+// Citations can point at either an article (this page) or a podcast episode (podcasts.html).
+// Newer analyses carry a `source_refs: [{type:'article'|'episode', id}]` array; older rows
+// only have `article_ids` (all implicitly type 'article') -- normalize both to one shape.
+function normalizeRefs(it) {
+  if (Array.isArray(it.source_refs)) return it.source_refs;
+  if (Array.isArray(it.article_ids)) return it.article_ids.map(id => ({ type: "article", id }));
+  return [];
+}
+
+// Renders one assertion's footnote-style citation marks, e.g. "[1, 2]", each number linking
+// to the corresponding source (an article card on this page, or an episode on podcasts.html).
+// `citeIndex` assigns numbers in first-seen order across the whole analysis card, so the same
+// source cited twice keeps one number. Keyed by "type:id" since an article id and an episode
+// id are only unique within their own table.
+function citeMarks(citeIndex, refs) {
+  if (!Array.isArray(refs) || !refs.length) return "";
+  const links = refs.map(ref => {
+    const key = `${ref.type}:${ref.id}`;
+    if (!citeIndex.has(key)) citeIndex.set(key, citeIndex.size + 1);
+    const n = citeIndex.get(key);
+    if (ref.type === "episode") {
+      return `<a href="podcasts.html#episode-${ref.id}" title="Open source episode">${n}</a>`;
+    }
+    return `<a href="#article-${ref.id}" onclick="return jumpToArticle(${ref.id}, event)" title="Jump to source article">${n}</a>`;
   }).join(",");
   return ` <span class="cite">[${links}]</span>`;
 }
 
 // Key Themes / Critical Risks / Underwriting Implications are arrays of short, independent
-// bullets — {label?, text, article_ids} (plain strings from older, uncited analyses still
+// bullets — {label?, text, source_refs} (plain strings from older, uncited analyses still
 // render fine, just without a bold lead-in or citations). `label` is an optional few-word
 // kicker ("Data centers dominate:") that gives the eye something to scan for.
 function renderCitedList(items, citeIndex) {
@@ -1094,21 +1117,21 @@ function renderCitedList(items, citeIndex) {
   return items.map(it => {
     if (typeof it === "string") return `<li>${escapeHtml(it)}</li>`;
     const label = it.label ? `<span class="analysis-item-label">${escapeHtml(it.label)}:</span> ` : "";
-    return `<li>${label}${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}</li>`;
+    return `<li>${label}${escapeHtml(it.text)}${citeMarks(citeIndex, normalizeRefs(it))}</li>`;
   }).join("");
 }
 
 // Executive Summary is different on purpose: it's a genuine narrative paragraph (the "story"
-// the 6 weeks of articles are telling), not a bulleted fact list — so its sentences are joined
-// into flowing prose with no bold labels breaking up the read. It's still an array of
-// {text, article_ids} sentences under the hood, each carrying its own citation(s); the writer
-// is expected to make consecutive sentences transition into each other.
+// the last 6 weeks of articles AND podcast episodes are telling), not a bulleted fact list --
+// so its sentences are joined into flowing prose with no bold labels breaking up the read.
+// It's still an array of {text, source_refs} sentences under the hood, each carrying its own
+// citation(s); the writer is expected to make consecutive sentences transition into each other.
 function renderCitedParagraph(items, citeIndex) {
   if (!items) return "";
   if (typeof items === "string") return escapeHtml(items); // legacy plain-string format
   if (!Array.isArray(items)) return "";
   return items.map(it =>
-    (typeof it === "string") ? escapeHtml(it) : `${escapeHtml(it.text)}${citeMarks(citeIndex, it.article_ids)}`
+    (typeof it === "string") ? escapeHtml(it) : `${escapeHtml(it.text)}${citeMarks(citeIndex, normalizeRefs(it))}`
   ).join(" ");
 }
 
@@ -1120,7 +1143,10 @@ function renderAnalysis(row) {
   card.hidden = false;
 
   const periodLabel = a.period_label ? `Last 6 Weeks (${a.period_label})` : "Last 6 Weeks";
-  const countLabel = (a.article_count != null) ? ` • ${a.article_count} articles analyzed` : "";
+  const parts = [];
+  if (a.article_count != null) parts.push(`${a.article_count} article${a.article_count === 1 ? "" : "s"}`);
+  if (a.episode_count) parts.push(`${a.episode_count} podcast episode${a.episode_count === 1 ? "" : "s"}`);
+  const countLabel = parts.length ? ` • ${parts.join(" + ")} analyzed` : "";
   document.getElementById("analysis-meta").textContent =
     `${periodLabel}${countLabel} • Posted ${fmtAnalysisDate(row.analysis_date)}`;
 
