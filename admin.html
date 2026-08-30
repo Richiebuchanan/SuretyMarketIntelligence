@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
     color-scheme: light;
@@ -121,6 +122,7 @@
   .msg.show { display: block; }
   .msg.ok { background: var(--ok-wash); border: 1px solid var(--ok-wash-2); color: var(--ok); }
   .msg.err { background: var(--accent-wash); border: 1px solid var(--accent-wash-2); color: var(--accent); }
+  .card .empty { font-size: 13px; color: var(--muted); }
 
   #app-locked { }
   #app-unlocked { display: none; }
@@ -130,7 +132,7 @@
 <div class="app">
 
   <h1>Surety Dashboard Admin</h1>
-  <p class="sub">Add companies to the account watchlist, queue article links, or add a trade publication for the overnight process to check directly each morning.</p>
+  <p class="sub">Add companies to the account watchlist, queue article links, add a trade publication for the overnight process to check directly each morning, or hand it a podcast episode's YouTube link.</p>
 
   <div id="app-locked" class="lock-screen">
     <p>Enter the password to continue.</p>
@@ -185,13 +187,58 @@
       <div class="msg" id="publication-msg"></div>
     </div>
 
+    <div class="card">
+      <h2>Add a podcast episode link</h2>
+      <p class="hint">The daily tracker detects new "Let's Get Surety" episodes on its own but usually can't find the YouTube video by itself — paste it here once you've found it. The next scheduled run fetches and scores the transcript.</p>
+
+      <label for="episode-select">Episode</label>
+      <select id="episode-select"><option value="">Loading…</option></select>
+
+      <label for="episode-url">YouTube link</label>
+      <input type="url" id="episode-url" placeholder="https://www.youtube.com/watch?v=…">
+
+      <button id="submit-episode" type="button">Add link</button>
+      <div class="msg" id="episode-msg"></div>
+    </div>
+
   </div>
 
 </div>
 
 <script>
 const ENDPOINT = "https://acxdvzcohjayvmqdaoke.supabase.co/functions/v1/queue-submit";
+const SUPABASE_URL = "https://acxdvzcohjayvmqdaoke.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_2n567u9zKgZ-L-M_yGRf5Q_HEV_p1-f"; // public read-only key -- same one index.html uses
 let PASSWORD = null;
+let supabaseClient = null;
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+async function loadPendingEpisodes() {
+  const sel = document.getElementById("episode-select");
+  sel.innerHTML = `<option value="">Loading…</option>`;
+  if (!supabaseClient) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const { data, error } = await supabaseClient
+    .from("podcast_episodes")
+    .select("episode_number, title, transcript_status")
+    .neq("transcript_status", "complete")
+    .order("episode_number", { ascending: false });
+
+  if (error) {
+    sel.innerHTML = `<option value="">Couldn't load episodes</option>`;
+    return;
+  }
+  if (!data || !data.length) {
+    sel.innerHTML = `<option value="">Nothing pending — every known episode already has a link</option>`;
+    return;
+  }
+  sel.innerHTML = data.map(ep =>
+    `<option value="${ep.episode_number}">#${ep.episode_number} — ${escapeHtml(ep.title)}${ep.transcript_status === "unavailable" ? " (retry)" : ""}</option>`
+  ).join("");
+}
 
 function showMsg(el, text, ok) {
   el.textContent = text;
@@ -244,6 +291,7 @@ document.getElementById("unlock-btn").addEventListener("click", async () => {
   PASSWORD = attempt;
   document.getElementById("app-locked").style.display = "none";
   document.getElementById("app-unlocked").style.display = "block";
+  loadPendingEpisodes();
 });
 
 document.getElementById("password-input").addEventListener("keydown", (e) => {
@@ -291,6 +339,20 @@ document.getElementById("submit-publication").addEventListener("click", async ()
   urlInput.value = "";
   notesInput.value = "";
   typeInput.value = "RSS";
+});
+
+document.getElementById("submit-episode").addEventListener("click", async () => {
+  const selectEl = document.getElementById("episode-select");
+  const urlInput = document.getElementById("episode-url");
+  const msgEl = document.getElementById("episode-msg");
+  const btn = document.getElementById("submit-episode");
+  const episodeNumber = selectEl.value;
+  const youtubeUrl = urlInput.value.trim();
+  if (!episodeNumber) { showMsg(msgEl, "Pick an episode first.", false); return; }
+  if (!youtubeUrl) { showMsg(msgEl, "Enter a YouTube link first.", false); return; }
+  await submit("add_episode_link", { episode_number: Number(episodeNumber), youtube_url: youtubeUrl }, msgEl, btn);
+  urlInput.value = "";
+  loadPendingEpisodes();
 });
 </script>
 </body>
