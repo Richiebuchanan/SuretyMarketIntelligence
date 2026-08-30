@@ -563,8 +563,33 @@
     padding: 18px 20px 16px;
     margin: 0 0 22px;
   }
-  .analysis-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 4px; }
+  .analysis-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 4px; }
   .analysis-head h2 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+  .analysis-nav { display: flex; align-items: center; gap: 6px; flex: none; }
+  .analysis-nav button {
+    all: unset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .analysis-nav button:hover:not(:disabled) { background: var(--accent-wash); border-color: var(--accent-wash-2); color: var(--accent); }
+  .analysis-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .analysis-nav button:disabled { opacity: 0.35; cursor: default; }
+  .analysis-nav-pos {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    color: var(--muted);
+    min-width: 42px;
+    text-align: center;
+  }
   .analysis-meta {
     font-family: "IBM Plex Mono", ui-monospace, monospace;
     font-size: 11.5px;
@@ -636,6 +661,16 @@
   /* Short bold lead-in before each bullet's detail, e.g. "Data center boom:" -- gives the eye something to scan for */
   .analysis-item-label { font-weight: 700; color: var(--ink); margin-right: 4px; }
 
+  /* Notable Shifts -- flags where this analysis diverges from the last two weeks' analyses.
+     Reuses the standard bullet layout but swaps the arrow for a "revised" glyph and gives the
+     label a distinct tone so a scanning reader clocks these as "this changed" vs. plain themes. */
+  .analysis-section.is-shift ul li::before { content: "\21BA"; font-size: 13px; top: -1px; }
+  .analysis-section.is-shift .analysis-item-label { color: #b45309; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .analysis-section.is-shift .analysis-item-label { color: #f0b429; }
+  }
+  :root[data-theme="dark"] .analysis-section.is-shift .analysis-item-label { color: #f0b429; }
+
   /* Citation markers — link an analysis assertion back to the article(s) it's grounded in */
   .cite {
     margin-left: 3px;
@@ -696,7 +731,12 @@
 
   <section class="analysis-card" id="analysis-card" hidden>
     <div class="analysis-head">
-      <h2>6-Week Market Analysis</h2>
+      <h2 id="analysis-title">6-Week Market Analysis as of —</h2>
+      <div class="analysis-nav" id="analysis-nav" hidden>
+        <button id="analysis-prev" type="button" aria-label="View earlier analysis" title="Earlier analysis">‹</button>
+        <span class="analysis-nav-pos" id="analysis-nav-pos"></span>
+        <button id="analysis-next" type="button" aria-label="View newer analysis" title="Newer analysis">›</button>
+      </div>
     </div>
     <p class="analysis-meta" id="analysis-meta"></p>
     <div class="analysis-collapse" id="analysis-collapse">
@@ -704,6 +744,10 @@
         <div class="analysis-section" id="analysis-summary-section">
           <h3>Executive Summary</h3>
           <p id="analysis-summary"></p>
+        </div>
+        <div class="analysis-section is-shift" id="analysis-shifts-section" hidden>
+          <h3>Shifts From Recent Analysis</h3>
+          <ul id="analysis-shifts"></ul>
         </div>
         <div class="analysis-section" id="analysis-themes-section">
           <h3>Key Themes</h3>
@@ -1094,6 +1138,16 @@ function fmtAnalysisDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
+// Unlike analysis_date (a bare date, handled above with the noon-UTC trick to dodge day-shift),
+// inserted_at is a real timestamptz -- new Date() on it is already the correct instant, so
+// localizing it straight to the viewer's timezone is the right behavior, not a bug to work around.
+function fmtAnalysisDateTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
@@ -1160,18 +1214,26 @@ function renderAnalysis(row) {
   const a = row.analysis;
   card.hidden = false;
 
+  document.getElementById("analysis-title").textContent =
+    `6-Week Market Analysis as of ${fmtAnalysisDateTime(row.inserted_at) || fmtAnalysisDate(row.analysis_date)}`;
+
   const periodLabel = a.period_label ? `Last 6 Weeks (${a.period_label})` : "Last 6 Weeks";
   const parts = [];
   if (a.article_count != null) parts.push(`${a.article_count} article${a.article_count === 1 ? "" : "s"}`);
   if (a.episode_count) parts.push(`${a.episode_count} podcast episode${a.episode_count === 1 ? "" : "s"}`);
   const countLabel = parts.length ? ` • ${parts.join(" + ")} analyzed` : "";
-  document.getElementById("analysis-meta").textContent =
-    `${periodLabel}${countLabel} • Posted ${fmtAnalysisDate(row.analysis_date)}`;
+  document.getElementById("analysis-meta").textContent = `${periodLabel}${countLabel}`;
 
-  // Fresh footnote numbering each render, assigned in reading order: summary -> themes -> risks -> implications.
+  // Fresh footnote numbering each render, assigned in reading order: summary -> shifts -> themes -> risks -> implications.
   const citeIndex = new Map();
 
   document.getElementById("analysis-summary").innerHTML = renderCitedParagraph(a.executive_summary, citeIndex);
+
+  // Notable Shifts: where this run's conclusions diverge from the prior two weeks of analyses.
+  // Absent on older rows and empty on most runs (nothing worth flagging) -- hidden either way.
+  const shiftsEl = document.getElementById("analysis-shifts");
+  shiftsEl.innerHTML = renderCitedList(a.notable_shifts, citeIndex);
+  document.getElementById("analysis-shifts-section").hidden = !(a.notable_shifts && a.notable_shifts.length);
 
   const themesEl = document.getElementById("analysis-themes");
   themesEl.innerHTML = renderCitedList(a.key_themes, citeIndex);
@@ -1194,17 +1256,57 @@ function initAnalysisToggle() {
   });
 }
 
-async function fetchLatestAnalysis() {
+// Analysis history / prev-next navigation -------------------------------------------------
+// Fetched once at boot (analysis doesn't need the live-poll treatment articles get): the
+// current post plus up to the 10 before it, newest first. The arrows just step an index into
+// this already-fetched array -- no re-querying Supabase on every click.
+const ANALYSIS_HISTORY_LIMIT = 11; // current + up to 10 earlier posts
+let analysisHistory = [];
+let analysisIndex = 0;
+
+function updateAnalysisNav() {
+  const nav = document.getElementById("analysis-nav");
+  if (analysisHistory.length <= 1) { nav.hidden = true; return; }
+  nav.hidden = false;
+  document.getElementById("analysis-prev").disabled = analysisIndex >= analysisHistory.length - 1;
+  document.getElementById("analysis-next").disabled = analysisIndex <= 0;
+  document.getElementById("analysis-nav-pos").textContent = `${analysisIndex + 1} of ${analysisHistory.length}`;
+}
+
+function showAnalysisAt(index) {
+  if (index < 0 || index >= analysisHistory.length) return;
+  analysisIndex = index;
+  renderAnalysis(analysisHistory[analysisIndex]);
+  updateAnalysisNav();
+}
+
+function initAnalysisNav() {
+  // prev = older (higher index, since the array is newest-first); next = newer (lower index).
+  document.getElementById("analysis-prev").addEventListener("click", () => showAnalysisAt(analysisIndex + 1));
+  document.getElementById("analysis-next").addEventListener("click", () => showAnalysisAt(analysisIndex - 1));
+}
+
+async function fetchAnalysisHistory() {
   try {
     const { data, error } = await supabaseClient
       .from("market_analysis")
       .select("analysis_date, analysis, inserted_at")
       .order("inserted_at", { ascending: false })
-      .limit(1);
-    if (error || !data || !data.length) { renderAnalysis(null); return; }
-    renderAnalysis(data[0]);
+      .limit(ANALYSIS_HISTORY_LIMIT);
+    if (error || !data || !data.length) {
+      analysisHistory = [];
+      renderAnalysis(null);
+      document.getElementById("analysis-nav").hidden = true;
+      return;
+    }
+    analysisHistory = data;
+    analysisIndex = 0;
+    renderAnalysis(analysisHistory[0]);
+    updateAnalysisNav();
   } catch (e) {
+    analysisHistory = [];
     renderAnalysis(null);
+    document.getElementById("analysis-nav").hidden = true;
   }
 }
 
@@ -1245,7 +1347,8 @@ function boot() {
   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   initAnalysisToggle();
-  fetchLatestAnalysis();
+  initAnalysisNav();
+  fetchAnalysisHistory();
   fetchArticles();
   pollTimer = setInterval(fetchArticles, POLL_MS);
 

@@ -9,7 +9,7 @@ A live dashboard for tracking surety-relevant industry news and top-account risk
 A single-page dashboard that reads live from a Supabase database and shows:
 
 - **Article ledger** — surety and construction-industry news, each scored 1–10 for underwriting relevance, with category (Contract Surety / Commercial Surety / Both / General), region, source, and a short AI-generated summary and underwriter insight per article. Filterable by category, region, source, company, date range, priority score, and free-text search.
-- **6-Week Market Analysis** — a periodically-refreshed executive summary (key themes, critical risks, underwriting implications) synthesized from the recent article set, with every claim cited back to a specific article.
+- **6-Week Market Analysis** — a periodically-refreshed executive summary (key themes, critical risks, underwriting implications, and any notable shifts from the prior two weeks of analyses) synthesized from the recent article and podcast-episode set, with every claim cited back to a specific source. Prev/next arrows page back through the last several posts, each labeled with the date and time it was generated.
 - **Company tagging** — articles are tagged with the real company/companies they're about (not limited to any fixed list), so news on a specific account can be isolated via the Company filter.
 
 All data — articles, the market analysis, and the tracked-company list — lives in Supabase and updates automatically. There is nothing to redeploy when new data comes in; only actual design or code changes to the page require a new commit here.
@@ -72,9 +72,9 @@ The main article ledger. Append-only — rows are never updated or deleted, dedu
 | column | type | notes |
 |---|---|---|
 | `analysis_date` | date | |
-| `analysis` | jsonb | `{period_label, article_count, executive_summary, key_themes[], critical_risks[], underwriting_implications[]}`, each list item citing back to article ids |
+| `analysis` | jsonb | `{period_label, article_count, episode_count, executive_summary, notable_shifts[], key_themes[], critical_risks[], underwriting_implications[]}`, each list item citing back to article and/or podcast-episode ids via `source_refs: [{type, id}]` |
 
-The dashboard always shows the single most recent row.
+The dashboard shows the most recent row by default; prev/next arrows page back through the last several (fetched by `inserted_at desc`, newest first). `notable_shifts` is empty on most runs — it's only populated when that run's conclusions meaningfully diverge from what the previous two weeks of analyses said.
 
 ### `account_watchlist`
 | column | type | notes |
@@ -114,7 +114,7 @@ A Claude scheduled task (configured in Claude's Tasks/Routines settings, cron `0
 3. Searches for news on each of the ~98 companies in `account_watchlist`
 4. Scores, classifies, and tags every new article, inserting into `surety_articles`
 5. Flags (but doesn't add) any promising new trade-pub sources for review
-6. Regenerates the `market_analysis` row from the last 6 weeks of articles, with inline citations
+6. Regenerates the `market_analysis` row from the last 6 weeks of articles and podcast episodes, with inline citations — after checking its draft conclusions against the previous two weeks of analyses and flagging anything that meaningfully diverges
 
 **See [`AUTOMATION.md`](./AUTOMATION.md)** for a full walkthrough of how and why each step works the way it does, the design decisions behind the schema, and a generalized recipe for pointing this same pattern at a different topic.
 
