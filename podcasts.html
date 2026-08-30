@@ -245,7 +245,7 @@
     .masthead h1 { font-size: 24px; }
     .mast-sub { font-size: 13px; }
     .filter-bar { position: static; flex-direction: column; align-items: stretch; padding: 10px; gap: 10px; }
-    .search-wrap, .cat-toggle, #source-select, #account-select, #sort-select, #reset-btn { width: 100%; flex: 1 1 100%; }
+    .search-wrap, .cat-toggle, #source-select, #show-select, #account-select, #sort-select, #reset-btn { width: 100%; flex: 1 1 100%; }
     .cat-toggle { flex-wrap: wrap; justify-content: flex-start; }
     .cat-btn { flex: 1 1 auto; justify-content: center; padding-top: 8px; padding-bottom: 8px; }
     select { width: 100%; padding-top: 9px; padding-bottom: 9px; font-size: 13px; }
@@ -260,8 +260,8 @@
 <div class="app">
 
   <header class="masthead">
-    <h1>Let's Get Surety — Podcast Archive</h1>
-    <p class="mast-sub">Episode summaries and full transcripts from NASBP's "Let's Get Surety" podcast, tracked as underwriting source material alongside the article ledger.</p>
+    <h1>Surety Podcast Archive</h1>
+    <p class="mast-sub">Episode summaries and full transcripts from surety and construction-industry podcasts — currently NASBP's "Let's Get Surety," with more shows added over time — tracked as underwriting source material alongside the article ledger.</p>
     <div class="mast-meta" id="mast-meta">Last Update: —</div>
     <nav class="site-nav">
       <a href="index.html">Articles</a>
@@ -286,6 +286,7 @@
       <input id="search-input" type="text" placeholder="Search title, summary, or transcript…" autocomplete="off">
     </div>
     <div class="cat-toggle" id="cat-toggle" role="group" aria-label="Filter by category"></div>
+    <select id="show-select" aria-label="Filter by podcast show"></select>
     <select id="account-select" aria-label="Filter by company"></select>
     <select id="sort-select" aria-label="Sort episodes">
       <option value="newest" selected>Sort: newest first</option>
@@ -311,7 +312,7 @@ const CAT_ORDER = ["Contract Surety", "Commercial Surety", "Both", "General"];
 const CAT_COLOR = { "Contract Surety": "var(--cat-1)", "Commercial Surety": "var(--cat-2)", "Both": "var(--cat-3)", "General": "var(--cat-4)" };
 const CAT_SHORT = { "Contract Surety": "Contract", "Commercial Surety": "Commercial", "Both": "Both", "General": "General" };
 
-const state = { search: "", cat: "all", account: "all", sortBy: "newest" };
+const state = { search: "", cat: "all", account: "all", show: "all", sortBy: "newest" };
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -353,15 +354,22 @@ function renderSelects() {
   accountSel.innerHTML = `<option value="all">All companies</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
   accountSel.addEventListener("change", () => { state.account = accountSel.value; applyFilters(); });
 
+  const shows = [...new Set(DATA.map(r => r.show_name).filter(Boolean))].sort();
+  const showSel = document.getElementById("show-select");
+  showSel.hidden = shows.length === 0;
+  showSel.innerHTML = `<option value="all">All podcasts</option>` + shows.map(s => `<option value="${s.replace(/"/g, '&quot;')}">${s}</option>`).join("");
+  showSel.addEventListener("change", () => { state.show = showSel.value; applyFilters(); });
+
   document.getElementById("search-input").addEventListener("input", (e) => { state.search = e.target.value.trim().toLowerCase(); applyFilters(); });
 
   const sortSel = document.getElementById("sort-select");
   sortSel.addEventListener("change", () => { state.sortBy = sortSel.value; renderLedger(); applyFilters(); });
 
   document.getElementById("reset-btn").addEventListener("click", () => {
-    state.search = ""; state.cat = "all"; state.account = "all"; state.sortBy = "newest";
+    state.search = ""; state.cat = "all"; state.account = "all"; state.show = "all"; state.sortBy = "newest";
     document.getElementById("search-input").value = "";
     accountSel.value = "all";
+    showSel.value = "all";
     sortSel.value = "newest";
     document.querySelectorAll(".cat-btn").forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cat") === "all"));
     renderLedger();
@@ -403,12 +411,14 @@ function renderLedger() {
     <article class="entry" id="episode-${r.id}" data-id="${r.id}" data-cat="${r.relevance_category || ""}"
       data-account="${accountsAttr}" data-score="${r.underwriter_value_score || 0}"
       data-pubdate="${r.publish_date || ""}"
+      data-show="${(r.show_name || "").replace(/"/g, '&quot;')}"
       data-search="${searchBlob}">
       <button class="entry-head" type="button" aria-expanded="false">
         <div class="ep-badge" title="Episode ${r.episode_number}">#${r.episode_number}${r.underwriter_value_score != null ? `<span>${r.underwriter_value_score}/10 ${scoreTier(r.underwriter_value_score)}</span>` : `<span>—</span>`}</div>
         <div class="entry-main">
           <p class="entry-title">${escapeHtml(r.title)}</p>
           <div class="badges">
+            ${r.show_name ? `<span class="badge mono">${escapeHtml(r.show_name)}</span>` : ""}
             ${accounts.map(a => `<span class="badge account">Company: ${escapeHtml(a)}</span>`).join("")}
             ${r.relevance_category ? `<span class="badge"><span class="dot" style="background:${catColor}"></span>${CAT_SHORT[r.relevance_category] || r.relevance_category}</span>` : ""}
             ${isPending ? `<span class="badge pending">Transcript pending${r.transcript_status === "pending_link" ? " — no YouTube link yet" : ""}</span>` : ""}
@@ -431,6 +441,8 @@ function renderLedger() {
             <div class="entry-links">
               <a class="entry-link" href="${r.link}" target="_blank" rel="noopener">Show notes <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
               ${r.youtube_url ? `<a class="entry-link" href="${r.youtube_url}" target="_blank" rel="noopener">Watch on YouTube <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17 17 7M7 7h10v10"/></svg></a>` : ""}
+              ${r.apple_podcasts_url ? `<a class="entry-link" href="${r.apple_podcasts_url}" target="_blank" rel="noopener">Apple Podcasts <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17 17 7M7 7h10v10"/></svg></a>` : ""}
+              ${r.spotify_url ? `<a class="entry-link" href="${r.spotify_url}" target="_blank" rel="noopener">Spotify <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17 17 7M7 7h10v10"/></svg></a>` : ""}
             </div>
             ${r.transcript ? `
               <button class="transcript-toggle" type="button" data-tt="${r.id}">Show full transcript ▾</button>
@@ -511,10 +523,12 @@ function applyFilters() {
   entries.forEach(entry => {
     const cat = entry.getAttribute("data-cat");
     const accounts = entry.getAttribute("data-account").split("||").filter(Boolean);
+    const show = entry.getAttribute("data-show");
     const search = entry.getAttribute("data-search");
     const match =
       (state.cat === "all" || cat === state.cat) &&
       (state.account === "all" || accounts.includes(state.account)) &&
+      (state.show === "all" || show === state.show) &&
       (state.search === "" || search.includes(state.search));
     entry.hidden = !match;
     if (match) visible++;
@@ -554,7 +568,7 @@ function renderAll() {
 async function fetchEpisodes() {
   const { data, error } = await supabaseClient
     .from("podcast_episodes")
-    .select("id, episode_number, title, publish_date, link, youtube_url, transcript, transcript_status, summary, bullet_points, underwriter_insights, relevance_category, underwriter_value_score, guests, related_account, inserted_at")
+    .select("id, episode_number, title, publish_date, link, youtube_url, apple_podcasts_url, spotify_url, show_name, transcript, transcript_status, summary, bullet_points, underwriter_insights, relevance_category, underwriter_value_score, guests, related_account, inserted_at")
     .order("episode_number", { ascending: false });
 
   if (error) {
