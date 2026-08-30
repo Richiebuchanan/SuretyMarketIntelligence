@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Surety Market Intelligence — Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  /* ---------- Tokens (matches index.html / podcasts.html) ---------- */
+  :root {
+    color-scheme: light;
+    --ground:        #f3f3f4;
+    --surface:       #ffffff;
+    --surface-2:     #f7f7f8;
+    --ink:           #1a1a1a;
+    --ink-secondary: #4d4d4d;
+    --muted:         #8a8a8a;
+    --border:        rgba(26,26,26,0.12);
+    --accent:        #bc002d;
+    --accent-ink:    #ffffff;
+    --accent-wash:   rgba(188,0,45,0.08);
+    --accent-wash-2: rgba(188,0,45,0.18);
+    --link:          #97001f;
+    --blue:  #2a78d6;
+    --green: #1baf7a;
+    --orange:#eb6834;
+    --red:   #bc002d;
+    --shadow-1: 0 1px 2px rgba(26,26,26,0.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:        #121212;
+      --surface:       #1e1e1e;
+      --surface-2:     #262626;
+      --ink:           #f2f2f2;
+      --ink-secondary: #c7c7c7;
+      --muted:         #8f8f8f;
+      --border:        rgba(242,242,242,0.14);
+      --accent:        #ff4d68;
+      --accent-ink:    #2a0006;
+      --accent-wash:   rgba(255,77,104,0.14);
+      --accent-wash-2: rgba(255,77,104,0.24);
+      --link:          #ff8fa3;
+      --blue:  #3987e5;
+      --green: #199e70;
+      --orange:#d95926;
+      --red:   #ff4d68;
+      --shadow-1: 0 1px 2px rgba(0,0,0,0.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:        #121212;
+    --surface:       #1e1e1e;
+    --surface-2:     #262626;
+    --ink:           #f2f2f2;
+    --ink-secondary: #c7c7c7;
+    --muted:         #8f8f8f;
+    --border:        rgba(242,242,242,0.14);
+    --accent:        #ff4d68;
+    --accent-ink:    #2a0006;
+    --accent-wash:   rgba(255,77,104,0.14);
+    --accent-wash-2: rgba(255,77,104,0.24);
+    --link:          #ff8fa3;
+    --blue:  #3987e5;
+    --green: #199e70;
+    --orange:#d95926;
+    --red:   #ff4d68;
+    --shadow-1: 0 1px 2px rgba(0,0,0,0.3);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; width: 100%; max-width: 100vw; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .wrap { max-width: 840px; margin: 0 auto; padding: 48px 24px 64px; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  h1 {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: clamp(26px, 4vw, 32px);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .lede {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink-secondary);
+    max-width: 66ch;
+    margin: 0 0 16px;
+  }
+  .statline {
+    font-size: 12.5px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .statline .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex: none; display: inline-block; }
+  .statline .sep { color: var(--border); }
+  hr.rule { border: none; border-top: 1px solid var(--border); margin: 0 0 32px; }
+
+  .section-label {
+    font-size: 11.5px;
+    letter-spacing: 0.13em;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 12px;
+  }
+  section { margin-bottom: 36px; }
+  .body-text {
+    font-size: 14.5px;
+    line-height: 1.65;
+    color: var(--ink-secondary);
+    margin: 0;
+    max-width: 74ch;
+  }
+  .body-text b { color: var(--ink); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-1);
+    padding: 18px 20px 20px;
+  }
+  .card-head {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 14.5px; font-weight: 700; color: var(--ink);
+    margin-bottom: 12px;
+  }
+  .card-head .cdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .c-blue { background: var(--blue); }
+  .c-green { background: var(--green); }
+  .c-orange { background: var(--orange); }
+  .c-red { background: var(--red); }
+
+  ul.bl { list-style: none; margin: 0; padding: 0; }
+  ul.bl li {
+    font-size: 13.5px; line-height: 1.55; color: var(--ink-secondary);
+    padding-left: 18px; position: relative; margin-bottom: 10px;
+  }
+  ul.bl li:last-child { margin-bottom: 0; }
+  ul.bl li::before {
+    content: "\2192"; position: absolute; left: 0; color: var(--muted); font-size: 12px; font-weight: 700;
+  }
+
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-1);
+    padding: 16px 16px 18px;
+  }
+  .step .num { font-size: 11px; font-weight: 700; color: var(--accent); letter-spacing: 0.06em; margin-bottom: 8px; }
+  .step .title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+  .step .desc { font-size: 12.5px; line-height: 1.5; color: var(--ink-secondary); }
+
+  .shipped-note {
+    display: flex; align-items: center; gap: 10px;
+    background: color-mix(in srgb, var(--green) 10%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--green) 30%, var(--border));
+    border-radius: 9px;
+    padding: 12px 16px;
+    font-size: 13px; color: var(--ink-secondary);
+    margin-bottom: 16px;
+  }
+  .shipped-note b { color: var(--ink); }
+  .shipped-note .check {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--green); color: #fff; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 800;
+  }
+
+  .next-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .next-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-1);
+    padding: 15px 17px 17px;
+  }
+  .next-card .nc-head { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .next-card .nc-head .cdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .tag { font-size: 10px; letter-spacing: 0.09em; font-weight: 700; color: var(--muted); margin: 0 0 8px 20px; }
+  .next-card .nc-desc { font-size: 13px; line-height: 1.5; color: var(--ink-secondary); }
+
+  .cta {
+    /* Deliberately fixed dark, not tied to --ink -- this is a high-contrast callout panel
+       that should look the same in both themes, not flip to a light panel in dark mode. */
+    background: #18181b;
+    border-radius: 12px;
+    padding: 22px 26px;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  }
+  .cta .cta-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 5px; }
+  .cta .cta-desc { font-size: 12.5px; line-height: 1.5; color: #a1a1aa; max-width: 42ch; }
+  .cta .btn {
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px; font-weight: 700;
+    padding: 11px 18px;
+    border-radius: 7px;
+    white-space: nowrap;
+    flex: none;
+    text-decoration: none;
+    transition: opacity 120ms ease;
+  }
+  .cta .btn:hover { opacity: 0.88; }
+
+  .warn {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--accent-wash);
+    border: 1px solid var(--accent-wash-2);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 13px 16px;
+    font-size: 12.5px; line-height: 1.55;
+  }
+  .warn strong { color: var(--accent); font-weight: 700; }
+
+  .footer {
+    text-align: center;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding-top: 8px;
+  }
+
+  @media (max-width: 720px) {
+    .two-col, .steps, .next-grid { grid-template-columns: 1fr; }
+    .wrap { padding: 32px 18px 48px; }
+    .cta .btn { white-space: normal; word-break: break-word; text-align: center; flex: 1 1 auto; min-width: 0; }
+    .cta { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow mono">SURETY MARKET INTELLIGENCE</div>
+  <h1>A live intelligence feed, built for underwriting.</h1>
+  <p class="lede">
+    One continuously-updated system that reads the surety and construction press, runs a targeted
+    sweep across a watchlist of top accounts, and now transcribes industry podcast episodes — scoring
+    everything it finds for underwriting relevance and turning it into a prioritized, filterable,
+    fully-sourced feed built for both desk-level underwriting and portfolio-level leadership.
+  </p>
+  <div class="statline">
+    <span class="dot"></span> Refreshes automatically, every day
+    <span class="sep">•</span> 280 articles archived across 98 tracked accounts
+    <span class="sep">•</span> Sourced from ENR, Construction Dive, Insurance Business, Insurance Journal, NASBP, SFAA, Reinsurance News, Bloomberg &amp; more
+  </div>
+  <hr class="rule">
+
+  <section>
+    <div class="section-label mono">WHAT IT IS</div>
+    <p class="body-text">
+      Surety Market Intelligence is an automated research pipeline, not a static report. Every day it searches
+      13 tracked trade-press feeds and public sources for surety-relevant news — bond claims and defaults,
+      contractor bankruptcies, infrastructure funding, project awards, rating actions — <b>and</b> runs a
+      targeted sweep across a watchlist of 98 top accounts. It also transcribes and scores every episode of
+      NASBP's <i>Let's Get Surety</i> podcast, folding that perspective into the same feed. Each item is scored
+      1–10 for underwriting actionability, classified as Contract or Commercial Surety, summarized, and written
+      into a permanent, live-queried archive. The result is a dashboard that stays current without anyone
+      having to maintain it.
+    </p>
+  </section>
+
+  <section>
+    <div class="section-label mono">WHY IT MATTERS</div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-head"><span class="cdot c-blue"></span>For Underwriters</div>
+        <ul class="bl">
+          <li>One prioritized feed replaces manually scanning a dozen trade sites every morning</li>
+          <li>A 1–10 score measures underwriting <i>actionability</i> — not just whether the news is good or bad</li>
+          <li>Account tracking flags risk signal tied to your specific bonded relationships automatically</li>
+          <li>Podcast transcripts surface underwriter perspective and market color you'd otherwise have to listen for</li>
+          <li>Every AI-written summary links back to its source — nothing is taken on faith</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="cdot c-green"></span>For Leadership</div>
+        <ul class="bl">
+          <li>A standing 6-week market analysis gives a portfolio-level pulse without reading every article</li>
+          <li>Region, category, and account breakdowns show where exposure is concentrating</li>
+          <li>A compounding asset — new source coverage adds value over time, not a one-off deliverable</li>
+          <li>280 articles and counting, growing daily without added headcount</li>
+          <li>Fully transparent by design: AI-generated content is labeled and cited throughout</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label mono">HOW IT WORKS, TODAY</div>
+    <div class="steps">
+      <div class="step">
+        <div class="num mono">01 — SEARCH</div>
+        <div class="title">Trade press, accounts &amp; podcasts</div>
+        <div class="desc">Scans 13 surety/construction feeds, runs a targeted search across all 98 watchlist accounts, and pulls new podcast episodes for transcription.</div>
+      </div>
+      <div class="step">
+        <div class="num mono">02 — SCORE</div>
+        <div class="title">Classify &amp; prioritize</div>
+        <div class="desc">Each story is scored 1–10, tagged Contract/Commercial Surety, and summarized with underwriter-specific insight.</div>
+      </div>
+      <div class="step">
+        <div class="num mono">03 — ARCHIVE</div>
+        <div class="title">Dedupe into a live ledger</div>
+        <div class="desc">New, non-duplicate items are written to an append-only archive the dashboard queries directly — no manual publishing step.</div>
+      </div>
+      <div class="step">
+        <div class="num mono">04 — SYNTHESIZE</div>
+        <div class="title">6-week analysis, cited</div>
+        <div class="desc">Themes, risks, and implications regenerate on every run, citing both articles and podcast episodes back to source.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-label mono">WHAT'S NEXT</div>
+    <div class="shipped-note">
+      <span class="check">✓</span>
+      <span><b>Industry Podcasts</b> shipped — NASBP's <i>Let's Get Surety</i> is now live in the feed above, with every episode transcribed and scored.</span>
+    </div>
+    <div class="next-grid">
+      <div class="next-card">
+        <div class="nc-head"><span class="cdot c-blue"></span>Account Profiles</div>
+        <div class="tag mono">STRUCTURAL</div>
+        <div class="nc-desc">One timeline per company, pulling news, filings, safety and litigation signal into a single page.</div>
+      </div>
+      <div class="next-card">
+        <div class="nc-head"><span class="cdot c-orange"></span>SEC &amp; Federal Filings</div>
+        <div class="tag mono">NEW DATA SOURCE</div>
+        <div class="nc-desc">Structured 8-K filings, SAM.gov debarment checks, and USAspending contract-award tracking.</div>
+      </div>
+      <div class="next-card">
+        <div class="nc-head"><span class="cdot c-green"></span>Economic Indicators</div>
+        <div class="tag mono">NEW DATA SOURCE</div>
+        <div class="nc-desc">Housing starts, construction spending, and materials pricing pulled straight from federal data.</div>
+      </div>
+      <div class="next-card">
+        <div class="nc-head"><span class="cdot c-red"></span>Safety &amp; Risk Signals</div>
+        <div class="tag mono">NEW DATA SOURCE</div>
+        <div class="nc-desc">OSHA inspection and violation history layered onto tracked contractors as an early risk signal.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cta">
+      <div>
+        <div class="cta-title">See it live</div>
+        <div class="cta-desc">The dashboard is public, reads straight from the underlying data, and updates automatically — no login required.</div>
+      </div>
+      <a class="btn mono" href="https://richiebuchanan.github.io/SuretyMarketIntelligence/" target="_blank" rel="noopener">richiebuchanan.github.io/SuretyMarketIntelligence →</a>
+    </div>
+  </section>
+
+  <section style="margin-bottom: 24px;">
+    <div class="warn">
+      <span aria-hidden="true">⚠️</span>
+      <span><strong>AI-Generated Analysis:</strong> Scoring, summaries, and the 6-week analysis on this dashboard are generated
+      by Claude AI and may contain errors or inaccuracies. Use as a research starting point and verify assertions
+      independently before making underwriting decisions.</span>
+    </div>
+  </section>
+
+  <div class="footer mono">SURETY MARKET INTELLIGENCE — INTERNAL OVERVIEW — UPDATED AUGUST 30, 2026</div>
+
+</div>
+</body>
+</html>
