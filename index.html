@@ -376,6 +376,13 @@
     font-weight: 600;
     white-space: normal;
   }
+  .badge.new-badge {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-ink);
+    font-weight: 700;
+  }
+  .badge.mono.added-today { color: var(--accent); border-color: var(--accent-wash-2); background: var(--accent-wash); font-weight: 600; }
 
   .meter-wrap { display: none; }
 
@@ -745,9 +752,11 @@
       <span id="min-score-out">1</span>
     </div>
     <select id="sort-select" aria-label="Sort articles">
+      <option value="added_desc" selected>Sort: newest added to site</option>
+      <option value="added_asc">Sort: oldest added to site</option>
+      <option value="pub_desc">Sort: newest published first</option>
+      <option value="pub_asc">Sort: oldest published first</option>
       <option value="priority">Sort: priority, high to low</option>
-      <option value="newest" selected>Sort: newest published first</option>
-      <option value="oldest">Sort: oldest published first</option>
     </select>
     <button id="reset-btn" type="button">Reset</button>
   </div>
@@ -781,7 +790,9 @@ function daysAgoISO(days) {
 
 const DEFAULT_DATE_FROM = daysAgoISO(42); // six weeks
 
-const state = { search: "", cat: "all", region: "all", source: "all", account: "all", minScore: 1, dateFrom: DEFAULT_DATE_FROM, dateTo: "", sortBy: "newest" };
+const state = { search: "", cat: "all", region: "all", source: "all", account: "all", minScore: 1, dateFrom: DEFAULT_DATE_FROM, dateTo: "", sortBy: "added_desc" };
+
+function todayISO() { return new Date().toISOString().slice(0, 10); }
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -848,12 +859,12 @@ function renderSelects() {
   sortSel.addEventListener("change", () => { state.sortBy = sortSel.value; renderLedger(); applyFilters(); });
 
   document.getElementById("reset-btn").addEventListener("click", () => {
-    state.search = ""; state.cat = "all"; state.region = "all"; state.source = "all"; state.account = "all"; state.minScore = 1; state.dateFrom = DEFAULT_DATE_FROM; state.dateTo = ""; state.sortBy = "newest";
+    state.search = ""; state.cat = "all"; state.region = "all"; state.source = "all"; state.account = "all"; state.minScore = 1; state.dateFrom = DEFAULT_DATE_FROM; state.dateTo = ""; state.sortBy = "added_desc";
     document.getElementById("search-input").value = "";
     regionSel.value = "all"; sourceSel.value = "all"; accountSel.value = "all";
     minScore.value = 1; minScoreOut.textContent = "1";
     dateFrom.value = DEFAULT_DATE_FROM; dateTo.value = "";
-    sortSel.value = "newest";
+    sortSel.value = "added_desc";
     document.querySelectorAll(".cat-btn").forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cat") === "all"));
     renderLedger();
     applyFilters();
@@ -869,8 +880,10 @@ function scoreTier(s) {
 
 function sortedData() {
   const arr = [...DATA];
-  if (state.sortBy === "newest") arr.sort((a, b) => (b.source_publish_date || "").localeCompare(a.source_publish_date || ""));
-  else if (state.sortBy === "oldest") arr.sort((a, b) => (a.source_publish_date || "").localeCompare(b.source_publish_date || ""));
+  if (state.sortBy === "added_desc") arr.sort((a, b) => (b.date_found || "").localeCompare(a.date_found || "") || (b.id - a.id));
+  else if (state.sortBy === "added_asc") arr.sort((a, b) => (a.date_found || "").localeCompare(b.date_found || "") || (a.id - b.id));
+  else if (state.sortBy === "pub_desc") arr.sort((a, b) => (b.source_publish_date || "").localeCompare(a.source_publish_date || ""));
+  else if (state.sortBy === "pub_asc") arr.sort((a, b) => (a.source_publish_date || "").localeCompare(b.source_publish_date || ""));
   else arr.sort((a, b) => b.underwriter_value_score - a.underwriter_value_score);
   return arr;
 }
@@ -885,28 +898,33 @@ function renderLedger() {
     Array.from(document.querySelectorAll(".entry.is-open")).map(e => e.getAttribute("data-id"))
   );
 
+  const today = todayISO();
   const el = document.getElementById("ledger");
   el.innerHTML = sorted.map((r, i) => {
     const catColor = CAT_COLOR[r.relevance_category] || "var(--muted)";
     const accounts = Array.isArray(r.related_account) ? r.related_account : [];
     const accountsAttr = accounts.map(a => a.replace(/"/g, '&quot;')).join("||");
     const accountsText = accounts.join(" ");
+    const isNewToday = r.date_found === today;
     return `
     <article class="entry" id="article-${r.id}" data-id="${r.id}" data-idx="${i}" data-cat="${r.relevance_category}" data-region="${regionGroup(r.region)}"
       data-source="${r.source_site}" data-score="${r.underwriter_value_score}"
       data-account="${accountsAttr}"
       data-pubdate="${r.source_publish_date || ""}"
+      data-added="${r.date_found || ""}"
       data-search="${(r.article_title + " " + r.summary + " " + accountsText).toLowerCase().replace(/"/g, '&quot;')}">
       <button class="entry-head" type="button" aria-expanded="false">
         <div class="score-badge" title="Underwriting priority: ${r.underwriter_value_score}/10">${r.underwriter_value_score}<span>${scoreTier(r.underwriter_value_score)}</span></div>
         <div class="entry-main">
           <p class="entry-title">${r.article_title}</p>
           <div class="badges">
+            ${isNewToday ? `<span class="badge new-badge" title="Added to the site today">🆕 New</span>` : ""}
             ${accounts.map(a => `<span class="badge account">Company: ${a}</span>`).join("")}
             <span class="badge"><span class="dot" style="background:${catColor}"></span>${CAT_SHORT[r.relevance_category] || r.relevance_category}</span>
             <span class="badge">${r.region}</span>
             <span class="badge">${r.source_site}</span>
-            <span class="badge mono">${fmtDate(r.source_publish_date)}</span>
+            <span class="badge mono">Published ${fmtDate(r.source_publish_date)}</span>
+            <span class="badge mono${isNewToday ? " added-today" : ""}">Added ${fmtDate(r.date_found)}</span>
           </div>
         </div>
         <span></span>
