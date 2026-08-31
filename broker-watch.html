@@ -1,0 +1,973 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Broker Watch</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  /* ---------- Tokens (kept identical to index.html/podcasts.html so all pages read as one site) ---------- */
+  :root {
+    color-scheme: light;
+    --ground:        #f3f3f4;
+    --plane:         #e9eaeb;
+    --surface:       #ffffff;
+    --surface-2:     #f7f7f8;
+    --ink:           #1a1a1a;
+    --ink-secondary: #4d4d4d;
+    --muted:         #8a8a8a;
+    --border:        rgba(26,26,26,0.12);
+    --border-strong: rgba(26,26,26,0.22);
+    --accent:        #bc002d;
+    --accent-ink:    #ffffff;
+    --accent-wash:   rgba(188,0,45,0.08);
+    --accent-wash-2: rgba(188,0,45,0.18);
+    --link:          #97001f;
+
+    --cat-1: #2a78d6; /* Contract Surety */
+    --cat-2: #eb6834; /* Commercial Surety */
+    --cat-3: #1baf7a; /* Both */
+    --cat-4: #eda100; /* General */
+
+    --seq-track: #e2e4e6;
+    --seq-fill:  #bc002d;
+
+    --shadow-1: 0 1px 2px rgba(26,26,26,0.06);
+    --shadow-2: 0 8px 24px rgba(26,26,26,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:        #121212;
+      --plane:         #181818;
+      --surface:       #1e1e1e;
+      --surface-2:     #262626;
+      --ink:           #f2f2f2;
+      --ink-secondary: #c7c7c7;
+      --muted:         #8f8f8f;
+      --border:        rgba(242,242,242,0.12);
+      --border-strong: rgba(242,242,242,0.22);
+      --accent:        #ff4d68;
+      --accent-ink:    #2a0006;
+      --accent-wash:   rgba(255,77,104,0.14);
+      --accent-wash-2: rgba(255,77,104,0.24);
+      --link:          #ff8fa3;
+      --cat-1: #3987e5;
+      --cat-2: #d95926;
+      --cat-3: #199e70;
+      --cat-4: #c98500;
+      --seq-track: #2a2a2a;
+      --seq-fill:  #ff4d68;
+      --shadow-1: 0 1px 2px rgba(0,0,0,0.30);
+      --shadow-2: 0 12px 32px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:        #121212;
+    --plane:         #181818;
+    --surface:       #1e1e1e;
+    --surface-2:     #262626;
+    --ink:           #f2f2f2;
+    --ink-secondary: #c7c7c7;
+    --muted:         #8f8f8f;
+    --border:        rgba(242,242,242,0.12);
+    --border-strong: rgba(242,242,242,0.22);
+    --accent:        #ff4d68;
+    --accent-ink:    #2a0006;
+    --accent-wash:   rgba(255,77,104,0.14);
+    --accent-wash-2: rgba(255,77,104,0.24);
+    --link:          #ff8fa3;
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+    --cat-4: #c98500;
+    --seq-track: #2a2a2a;
+    --seq-fill:  #ff4d68;
+    --shadow-1: 0 1px 2px rgba(0,0,0,0.30);
+    --shadow-2: 0 12px 32px rgba(0,0,0,0.45);
+  }
+
+  /* ---------- Base ---------- */
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  html, body { overflow-x: hidden; width: 100%; max-width: 100vw; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.5;
+  }
+  img, svg { max-width: 100%; }
+  @media (prefers-reduced-motion: no-preference) {
+    .entry-body { transition: grid-template-rows 180ms ease; }
+    .chevron { transition: transform 150ms ease; }
+    button, select, input[type="range"] { transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease; }
+  }
+
+  h1, h2, h3 { font-family: "Inter", system-ui, sans-serif; font-weight: 700; text-wrap: balance; margin: 0; }
+  a { color: var(--link); }
+
+  .app { max-width: 1040px; margin: 0 auto; padding: 28px 20px 80px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
+
+  /* ---------- Masthead ---------- */
+  .masthead { padding: 8px 4px 0; margin-bottom: 16px; }
+  .masthead h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 700; letter-spacing: -0.005em; }
+  .mast-sub { margin: 10px 0 0; max-width: 62ch; color: var(--ink-secondary); font-size: 15px; }
+  .mast-meta { margin-top: 14px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .masthead-divider { border-top: 1px solid var(--border); margin: 16px 0 16px; }
+  .site-nav { display: flex; gap: 14px; margin-top: 12px; font-size: 13px; font-weight: 600; }
+  .site-nav a { text-decoration: none; color: var(--ink-secondary); padding: 4px 0; border-bottom: 2px solid transparent; }
+  .site-nav a:hover { color: var(--ink); }
+  .site-nav a.is-current { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ---------- Filter bar ---------- */
+  .priority-note { font-size: 11.5px; color: var(--muted); margin: 0 2px 10px; max-width: 68ch; }
+  .filter-section-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0 2px 10px; }
+  .filter-section-head h2 { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
+  .filter-hint { font-size: 12px; color: var(--muted); margin: 0; }
+  .filter-bar {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 18px; box-shadow: var(--shadow-1);
+    position: sticky; top: 12px; z-index: 5;
+  }
+  .search-wrap { position: relative; flex: 1 1 200px; min-width: 160px; }
+  .search-wrap svg { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted); pointer-events: none; }
+  #search-input {
+    width: 100%; font: inherit; font-size: 13.5px; padding: 7px 10px 7px 28px; border-radius: 6px;
+    border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--ink);
+  }
+  #search-input::placeholder { color: var(--muted); }
+  #search-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .cat-toggle { display: inline-flex; gap: 4px; padding: 3px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px; }
+  .cat-btn {
+    all: unset; cursor: pointer; font-size: 12px; font-weight: 500; padding: 5px 9px; border-radius: 5px;
+    color: var(--ink-secondary); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .cat-btn .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .cat-btn:hover { background: var(--surface); }
+  .cat-btn.is-active { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--border-strong); }
+  .cat-btn[data-cat="all"] .dot { display: none; }
+
+  select, .stepper {
+    font: inherit; font-size: 12.5px; color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 9px;
+  }
+  select { cursor: pointer; }
+  select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .stepper { display: inline-flex; align-items: center; gap: 7px; }
+  .stepper label { color: var(--muted); font-size: 11.5px; }
+  #min-score { accent-color: var(--accent); width: 84px; }
+  #min-score-out { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; min-width: 2.6em; }
+
+  .date-range { display: inline-flex; align-items: center; gap: 6px; }
+  .date-range label { color: var(--muted); font-size: 11.5px; }
+  .date-range input[type="date"] {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--ink);
+    background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 6px; padding: 5px 7px;
+    color-scheme: light dark;
+  }
+  .date-range input[type="date"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .date-range .date-sep { color: var(--muted); font-size: 11.5px; }
+
+  #reset-btn { all: unset; cursor: pointer; font-size: 12px; color: var(--muted); padding: 6px 8px; border-radius: 6px; }
+  #reset-btn:hover { color: var(--ink); background: var(--surface-2); }
+
+  .result-line { font-size: 12.5px; color: var(--muted); margin: 0 2px 10px; }
+  .result-line strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Ledger ---------- */
+  .ledger { display: flex; flex-direction: column; gap: 8px; }
+
+  .entry {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-1);
+    overflow: hidden; scroll-margin-top: 96px;
+  }
+  @keyframes entry-cite-flash {
+    0%   { background: var(--accent-wash-2); box-shadow: 0 0 0 2px var(--accent-wash-2); }
+    100% { background: var(--surface); box-shadow: 0 0 0 0 transparent; }
+  }
+  .entry.is-highlighted { animation: entry-cite-flash 1.8s ease-out; }
+  @media (prefers-reduced-motion: reduce) { .entry.is-highlighted { animation: none; background: var(--accent-wash); } }
+
+  .entry-head {
+    all: unset; box-sizing: border-box; display: grid; grid-template-columns: 40px 1fr 84px 20px;
+    align-items: center; gap: 14px; width: 100%; padding: 13px 14px; cursor: pointer;
+  }
+  .entry-head:hover { background: var(--surface-2); }
+  .entry-head:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .score-badge {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600; font-size: 14px;
+    font-variant-numeric: tabular-nums; width: 40px; height: 40px; border-radius: 7px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--ink);
+  }
+  .score-badge span { font-size: 8px; font-weight: 500; color: var(--muted); margin-top: 2px; letter-spacing: 0.02em; }
+
+  .entry-main { min-width: 0; text-align: left; }
+  .entry-title {
+    font-family: "Inter", sans-serif; font-weight: 600; font-size: 14.5px; color: var(--ink); margin: 0 0 6px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 2px 7px; border-radius: 20px;
+    color: var(--ink-secondary); background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap;
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .badge.mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .badge.account { background: var(--accent-wash); border-color: var(--accent-wash-2); color: var(--accent); font-weight: 600; white-space: normal; }
+  .badge.new-badge { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  .badge.mono.added-today { color: var(--accent); border-color: var(--accent-wash-2); background: var(--accent-wash); font-weight: 600; }
+
+  .chevron { justify-self: end; width: 18px; height: 18px; color: var(--muted); }
+  .entry.is-open .chevron { transform: rotate(180deg); }
+
+  .entry-body { display: grid; grid-template-rows: 0fr; }
+  .entry.is-open .entry-body { grid-template-rows: 1fr; }
+  .entry-body-inner { overflow: hidden; min-height: 0; }
+  .entry-body-content { padding: 2px 18px 20px 68px; border-top: 1px solid var(--border); margin-top: 2px; padding-top: 14px; }
+  .entry-summary { font-size: 13.5px; color: var(--ink-secondary); margin: 0 0 12px; max-width: 68ch; }
+  .entry-bullets { margin: 0 0 12px; padding-left: 18px; font-size: 13px; color: var(--ink-secondary); }
+  .entry-bullets li { margin-bottom: 4px; }
+  .entry-insight {
+    font-size: 13px; color: var(--ink); background: var(--surface-2); border-left: 2px solid var(--accent);
+    padding: 9px 12px; border-radius: 0 6px 6px 0; margin: 0 0 14px; max-width: 68ch;
+  }
+  .entry-insight strong { color: var(--accent); font-weight: 600; }
+  .entry-link { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 600; text-decoration: none; color: var(--link); }
+  .entry-link:hover { text-decoration: underline; }
+  .rationale { font-size: 11.5px; color: var(--muted); margin: -6px 0 12px; font-style: italic; }
+
+  .empty-state {
+    text-align: center; padding: 48px 20px; color: var(--muted); font-size: 13.5px;
+    background: var(--surface); border: 1px dashed var(--border-strong); border-radius: 8px;
+  }
+
+  footer.note { margin-top: 26px; font-size: 11.5px; color: var(--muted); text-align: center; }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width: 768px) {
+    html, body { overflow-x: hidden; }
+    .app { padding: 16px 12px 50px; max-width: 100%; }
+    * { min-width: 0; }
+    .masthead h1 { font-size: 24px; }
+    .mast-sub { font-size: 13px; }
+    .mast-meta { font-size: 11px; }
+    .priority-note { font-size: 11px; }
+    .filter-section-head h2 { font-size: 13px; }
+    .filter-hint { font-size: 11.5px; }
+    .filter-bar { position: static; flex-direction: column; align-items: stretch; padding: 10px; gap: 10px; }
+    .search-wrap, .cat-toggle, #region-select, #source-select, #account-select, .date-range, .stepper, #sort-select, #reset-btn { width: 100%; flex: 1 1 100%; }
+    #search-input { font-size: 13px; padding: 9px 10px 9px 30px; }
+    .cat-toggle { flex-wrap: wrap; justify-content: flex-start; }
+    .cat-btn { flex: 1 1 auto; justify-content: center; padding-top: 8px; padding-bottom: 8px; }
+    select { width: 100%; padding-top: 9px; padding-bottom: 9px; font-size: 13px; }
+    .date-range { flex-wrap: wrap; }
+    .date-range input[type="date"] { flex: 1 1 0; min-width: 0; }
+    .stepper { justify-content: space-between; padding-top: 9px; padding-bottom: 9px; }
+    #reset-btn { text-align: center; padding-top: 9px; padding-bottom: 9px; border: 1px solid var(--border-strong); }
+    .result-line { font-size: 12px; }
+    .entry-head { grid-template-columns: 28px 1fr 18px; gap: 10px; padding: 11px 12px; }
+    .score-badge { width: 28px; height: 28px; font-size: 11px; border-radius: 6px; }
+    .score-badge span { font-size: 6.5px; }
+    .entry-title { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; word-break: break-word; font-size: 13.5px; }
+    .badge { font-size: 10px; overflow-wrap: break-word; }
+    .entry-body-content { padding: 12px 12px 16px; }
+    .entry-summary, .entry-bullets, .entry-insight { font-size: 12.5px; }
+    .entry { scroll-margin-top: 16px; }
+    .analysis-card { padding: 14px 14px 12px; }
+    .analysis-head h2 { font-size: 14.5px; }
+    .analysis-collapse { grid-template-rows: minmax(0, 190px); }
+    .analysis-section p, .analysis-section ul { font-size: 12.5px; }
+  }
+  .conn-banner { margin: 8px 0 0; padding: 10px 14px; border-radius: 8px; background: var(--accent-wash); border: 1px solid var(--accent-wash-2); color: var(--ink); font-size: 13.5px; }
+  .disclaimer-banner {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: var(--accent-wash); border: 1px solid var(--accent-wash-2); color: var(--ink);
+    border-radius: 8px; padding: 12px 14px; margin: 0; font-size: 13px; line-height: 1.5;
+    max-width: 100%; overflow-wrap: break-word;
+  }
+  .disclaimer-banner .icon { flex: none; }
+  .disclaimer-banner strong { font-weight: 700; color: var(--accent); }
+
+  /* ---------- 6-Week Producer Partner Analysis (identical mechanics to index.html's Market Analysis) ---------- */
+  .analysis-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-1); padding: 18px 20px 16px; margin: 0 0 22px; }
+  .analysis-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 4px; }
+  .analysis-head h2 { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+  .analysis-nav { display: flex; align-items: center; gap: 6px; flex: none; }
+  .analysis-nav button {
+    all: unset; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--ink); cursor: pointer; font-size: 14px; line-height: 1;
+  }
+  .analysis-nav button:hover:not(:disabled) { background: var(--accent-wash); border-color: var(--accent-wash-2); color: var(--accent); }
+  .analysis-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .analysis-nav button:disabled { opacity: 0.35; cursor: default; }
+  .analysis-nav-pos { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px; color: var(--muted); min-width: 42px; text-align: center; }
+  .analysis-meta { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; color: var(--muted); margin: 0 0 14px; }
+  .analysis-collapse { display: grid; grid-template-rows: minmax(0, 230px); overflow: hidden; position: relative; transition: grid-template-rows 220ms ease; }
+  .analysis-collapse.is-expanded { grid-template-rows: minmax(0, 1fr); }
+  .analysis-collapse-inner { overflow: hidden; min-height: 0; }
+  .analysis-fade { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(to bottom, rgba(255,255,255,0), var(--surface)); pointer-events: none; transition: opacity 150ms ease; }
+  .analysis-collapse.is-expanded .analysis-fade { opacity: 0; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .analysis-fade { background: linear-gradient(to bottom, rgba(30,30,30,0), var(--surface)); } }
+  :root[data-theme="dark"] .analysis-fade { background: linear-gradient(to bottom, rgba(30,30,30,0), var(--surface)); }
+
+  .analysis-section { margin: 0 0 16px; }
+  .analysis-section:last-child { margin-bottom: 0; }
+  .analysis-section h3 { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); margin: 0 0 8px; }
+  .analysis-section p { font-size: 13.5px; color: var(--ink); margin: 0; max-width: 74ch; line-height: 1.65; }
+  .analysis-section ul { list-style: none; margin: 0; padding-left: 0; font-size: 13.5px; color: var(--ink); line-height: 1.5; }
+  .analysis-section ul li { position: relative; padding-left: 26px; margin-bottom: 10px; max-width: 66ch; }
+  .analysis-section ul li:last-child { margin-bottom: 0; }
+  .analysis-section ul li::before { content: "\2192"; position: absolute; left: 6px; top: 0; color: var(--accent); font-size: 12px; font-weight: 700; line-height: 1.5; }
+  .analysis-section ul.is-ordered { counter-reset: impl; }
+  .analysis-section ul.is-ordered li { counter-increment: impl; padding-left: 24px; }
+  .analysis-section ul.is-ordered li::before {
+    content: counter(impl); left: 0; width: 17px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 10.5px;
+    text-align: center; background: var(--surface-2); border-radius: 50%; line-height: 17px; top: 1px;
+  }
+  .analysis-item-label { font-weight: 700; color: var(--ink); margin-right: 4px; }
+
+  .analysis-section.is-shift ul li::before { content: "\21BA"; font-size: 13px; top: -1px; }
+  .analysis-section.is-shift .analysis-item-label { color: #b45309; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .analysis-section.is-shift .analysis-item-label { color: #f0b429; } }
+  :root[data-theme="dark"] .analysis-section.is-shift .analysis-item-label { color: #f0b429; }
+
+  .cite { margin-left: 3px; font-size: 10.5px; font-weight: 500; vertical-align: super; line-height: 1; color: var(--muted); white-space: nowrap; }
+  .cite a { color: var(--link); text-decoration: none; font-weight: 700; font-family: "IBM Plex Mono", ui-monospace, monospace; padding: 0 1px; }
+  .cite a:hover, .cite a:focus-visible { text-decoration: underline; }
+  .cite a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-radius: 2px; }
+
+  .analysis-toggle-wrap { text-align: left; margin-top: 10px; }
+  #analysis-toggle { all: unset; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--link); padding: 6px 14px; border-radius: 20px; }
+  #analysis-toggle:hover { background: var(--surface-2); }
+  .analysis-empty { font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="masthead">
+    <h1>Broker Watch</h1>
+    <p class="mast-sub">News on Richie's broker and producer-partner distribution network — consolidation, leadership moves, team movement, and financing — tracked separately from general surety/construction market news.</p>
+    <div class="mast-meta" id="mast-meta">Last Update: —</div>
+    <nav class="site-nav">
+      <a href="index.html">Market Watch</a>
+      <a href="broker-watch.html" class="is-current">Broker Watch</a>
+      <a href="podcasts.html">Podcasts</a>
+    </nav>
+
+    <div class="masthead-divider"></div>
+
+    <div class="disclaimer-banner" role="note">
+      <span class="icon" aria-hidden="true">⚠️</span>
+      <span><strong>AI-Generated Analysis:</strong> All analysis on this page is generated by Claude AI and may contain errors or inaccuracies. Use this as a starting point for research, but verify all assertions independently before making relationship or underwriting decisions.</span>
+    </div>
+
+    <p class="conn-banner" id="conn-state" hidden></p>
+  </header>
+
+  <section class="analysis-card" id="analysis-card" hidden>
+    <div class="analysis-head">
+      <h2 id="analysis-title">6-Week Producer Partner Analysis as of —</h2>
+      <div class="analysis-nav" id="analysis-nav" hidden>
+        <button id="analysis-prev" type="button" aria-label="View earlier analysis" title="Earlier analysis">‹</button>
+        <span class="analysis-nav-pos" id="analysis-nav-pos"></span>
+        <button id="analysis-next" type="button" aria-label="View newer analysis" title="Newer analysis">›</button>
+      </div>
+    </div>
+    <p class="analysis-meta" id="analysis-meta"></p>
+    <div class="analysis-collapse" id="analysis-collapse">
+      <div class="analysis-collapse-inner">
+        <div class="analysis-section" id="analysis-summary-section">
+          <h3>Executive Summary</h3>
+          <p id="analysis-summary"></p>
+        </div>
+        <div class="analysis-section is-shift" id="analysis-shifts-section" hidden>
+          <h3>Shifts From Recent Analysis</h3>
+          <ul id="analysis-shifts"></ul>
+        </div>
+        <div class="analysis-section" id="analysis-themes-section">
+          <h3>Key Themes</h3>
+          <ul id="analysis-themes"></ul>
+        </div>
+        <div class="analysis-section" id="analysis-risks-section">
+          <h3>Relationship Risks</h3>
+          <ul id="analysis-risks"></ul>
+        </div>
+        <div class="analysis-section" id="analysis-implications-section">
+          <h3>Recommended Actions</h3>
+          <ul id="analysis-implications" class="is-ordered"></ul>
+        </div>
+      </div>
+      <div class="analysis-fade" id="analysis-fade"></div>
+    </div>
+    <div class="analysis-toggle-wrap">
+      <button id="analysis-toggle" type="button" aria-expanded="false">See more</button>
+    </div>
+  </section>
+
+  <div class="filter-section-head">
+    <h2>Filters</h2>
+    <p class="filter-hint">Search, category, region, source, publish-date range, and priority all combine to narrow the list below; use Sort to reorder it. Click Reset to clear everything.</p>
+  </div>
+  <p class="priority-note">Priority (1–10): how significant this is for tracking the partner relationship — not a measure of whether the news is good or bad.</p>
+
+  <div class="filter-bar" role="search" aria-label="Filter broker/producer articles">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="search-input" type="text" placeholder="Search title, summary, or partner…" autocomplete="off">
+    </div>
+    <div class="cat-toggle" id="cat-toggle" role="group" aria-label="Filter by category"></div>
+    <select id="region-select" aria-label="Filter by region"></select>
+    <select id="source-select" aria-label="Filter by source"></select>
+    <select id="account-select" aria-label="Filter by partner"></select>
+    <div class="date-range">
+      <label for="date-from">Published</label>
+      <input type="date" id="date-from" aria-label="Published from date">
+      <span class="date-sep">–</span>
+      <input type="date" id="date-to" aria-label="Published to date">
+    </div>
+    <div class="stepper">
+      <label for="min-score">Priority ≥</label>
+      <input type="range" id="min-score" min="1" max="10" step="1" value="1">
+      <span id="min-score-out">1</span>
+    </div>
+    <select id="sort-select" aria-label="Sort articles">
+      <option value="added_desc" selected>Sort: newest added to site</option>
+      <option value="added_asc">Sort: oldest added to site</option>
+      <option value="pub_desc">Sort: newest published first</option>
+      <option value="pub_asc">Sort: oldest published first</option>
+      <option value="priority">Sort: priority, high to low</option>
+    </select>
+    <button id="reset-btn" type="button">Reset</button>
+  </div>
+
+  <p class="result-line" id="result-line"></p>
+
+  <div class="ledger" id="ledger"></div>
+  <p class="empty-state" id="empty-state" hidden>No entries match these filters. Try widening your search.</p>
+
+  <footer class="note">Broker/producer-partner news tracked separately from Market Watch. Reads live from the broker_producer_articles and producer_partner_analysis tables in Supabase (public read-only access) and refreshes automatically about once a minute. Manage the partner list from <a href="admin.html">Admin</a>.</footer>
+</div>
+
+<script>
+let DATA = [];
+let LAST_UPDATED = null;
+
+const CAT_ORDER = ["Contract Surety", "Commercial Surety", "Both", "General"];
+const CAT_COLOR = { "Contract Surety": "var(--cat-1)", "Commercial Surety": "var(--cat-2)", "Both": "var(--cat-3)", "General": "var(--cat-4)" };
+const CAT_SHORT = { "Contract Surety": "Contract", "Commercial Surety": "Commercial", "Both": "Both", "General": "General" };
+
+function regionGroup(region) {
+  const i = region.indexOf(" (");
+  return i === -1 ? region : region.slice(0, i);
+}
+
+function daysAgoISO(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().slice(0, 10);
+}
+
+const DEFAULT_DATE_FROM = daysAgoISO(42); // six weeks
+
+const state = { search: "", cat: "all", region: "all", source: "all", account: "all", minScore: 1, dateFrom: DEFAULT_DATE_FROM, dateTo: "", sortBy: "added_desc" };
+
+function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+function fmtDate(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+function fmtDateTime(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+}
+
+/* ---------- Filter controls ---------- */
+function renderCatToggle() {
+  const counts = { all: DATA.length };
+  CAT_ORDER.forEach(c => counts[c] = DATA.filter(r => r.relevance_category === c).length);
+  const el = document.getElementById("cat-toggle");
+  const items = [["all", "All"]].concat(CAT_ORDER.map(c => [c, CAT_SHORT[c]]));
+  el.innerHTML = items.map(([key, label]) => `
+    <button type="button" class="cat-btn ${key === "all" ? "is-active" : ""}" data-cat="${key}">
+      <span class="dot" style="background:${CAT_COLOR[key] || "transparent"}"></span>${label} <span style="color:var(--muted)">${counts[key]}</span>
+    </button>`).join("");
+  el.querySelectorAll(".cat-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.cat = btn.getAttribute("data-cat");
+      el.querySelectorAll(".cat-btn").forEach(b => b.classList.toggle("is-active", b === btn));
+      applyFilters();
+    });
+  });
+}
+
+function renderSelects() {
+  const regions = [...new Set(DATA.map(r => regionGroup(r.region)))].sort();
+  const regionSel = document.getElementById("region-select");
+  regionSel.innerHTML = `<option value="all">All regions</option>` + regions.map(r => `<option value="${r}">${r}</option>`).join("");
+  regionSel.addEventListener("change", () => { state.region = regionSel.value; applyFilters(); });
+
+  const sources = [...new Set(DATA.map(r => r.source_site))].sort();
+  const sourceSel = document.getElementById("source-select");
+  sourceSel.innerHTML = `<option value="all">All sources</option>` + sources.map(s => `<option value="${s}">${s}</option>`).join("");
+  sourceSel.addEventListener("change", () => { state.source = sourceSel.value; applyFilters(); });
+
+  const accounts = [...new Set(DATA.flatMap(r => Array.isArray(r.related_account) ? r.related_account : []).filter(Boolean))].sort();
+  const accountSel = document.getElementById("account-select");
+  accountSel.hidden = accounts.length === 0;
+  accountSel.innerHTML = `<option value="all">All partners</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
+  accountSel.addEventListener("change", () => { state.account = accountSel.value; applyFilters(); });
+
+  const minScore = document.getElementById("min-score");
+  const minScoreOut = document.getElementById("min-score-out");
+  minScore.addEventListener("input", () => { state.minScore = +minScore.value; minScoreOut.textContent = minScore.value; applyFilters(); });
+
+  document.getElementById("search-input").addEventListener("input", (e) => { state.search = e.target.value.trim().toLowerCase(); applyFilters(); });
+
+  const dateFrom = document.getElementById("date-from");
+  const dateTo = document.getElementById("date-to");
+  dateFrom.addEventListener("change", () => { state.dateFrom = dateFrom.value; applyFilters(); });
+  dateTo.addEventListener("change", () => { state.dateTo = dateTo.value; applyFilters(); });
+
+  const sortSel = document.getElementById("sort-select");
+  sortSel.addEventListener("change", () => { state.sortBy = sortSel.value; renderLedger(); applyFilters(); });
+
+  document.getElementById("reset-btn").addEventListener("click", () => {
+    state.search = ""; state.cat = "all"; state.region = "all"; state.source = "all"; state.account = "all"; state.minScore = 1; state.dateFrom = DEFAULT_DATE_FROM; state.dateTo = ""; state.sortBy = "added_desc";
+    document.getElementById("search-input").value = "";
+    regionSel.value = "all"; sourceSel.value = "all"; accountSel.value = "all";
+    minScore.value = 1; minScoreOut.textContent = "1";
+    dateFrom.value = DEFAULT_DATE_FROM; dateTo.value = "";
+    sortSel.value = "added_desc";
+    document.querySelectorAll(".cat-btn").forEach(b => b.classList.toggle("is-active", b.getAttribute("data-cat") === "all"));
+    renderLedger();
+    applyFilters();
+  });
+}
+
+/* ---------- Ledger ---------- */
+function scoreTier(s) {
+  if (s >= 8) return "High";
+  if (s >= 5) return "Med";
+  return "Low";
+}
+
+function sortedData() {
+  const arr = [...DATA];
+  if (state.sortBy === "added_desc") arr.sort((a, b) => (b.date_found || "").localeCompare(a.date_found || "") || (b.id - a.id));
+  else if (state.sortBy === "added_asc") arr.sort((a, b) => (a.date_found || "").localeCompare(b.date_found || "") || (a.id - b.id));
+  else if (state.sortBy === "pub_desc") arr.sort((a, b) => (b.source_publish_date || "").localeCompare(a.source_publish_date || ""));
+  else if (state.sortBy === "pub_asc") arr.sort((a, b) => (a.source_publish_date || "").localeCompare(b.source_publish_date || ""));
+  else arr.sort((a, b) => b.underwriter_value_score - a.underwriter_value_score);
+  return arr;
+}
+
+function renderLedger() {
+  const sorted = sortedData();
+  const openIds = new Set(
+    Array.from(document.querySelectorAll(".entry.is-open")).map(e => e.getAttribute("data-id"))
+  );
+
+  const today = todayISO();
+  const el = document.getElementById("ledger");
+  el.innerHTML = sorted.map((r, i) => {
+    const catColor = CAT_COLOR[r.relevance_category] || "var(--muted)";
+    const accounts = Array.isArray(r.related_account) ? r.related_account : [];
+    const accountsAttr = accounts.map(a => a.replace(/"/g, '&quot;')).join("||");
+    const accountsText = accounts.join(" ");
+    const isNewToday = r.date_found === today;
+    return `
+    <article class="entry" id="article-${r.id}" data-id="${r.id}" data-idx="${i}" data-cat="${r.relevance_category}" data-region="${regionGroup(r.region)}"
+      data-source="${r.source_site}" data-score="${r.underwriter_value_score}"
+      data-account="${accountsAttr}"
+      data-pubdate="${r.source_publish_date || ""}"
+      data-added="${r.date_found || ""}"
+      data-search="${(r.article_title + " " + r.summary + " " + accountsText).toLowerCase().replace(/"/g, '&quot;')}">
+      <button class="entry-head" type="button" aria-expanded="false">
+        <div class="score-badge" title="Priority: ${r.underwriter_value_score}/10">${r.underwriter_value_score}<span>${scoreTier(r.underwriter_value_score)}</span></div>
+        <div class="entry-main">
+          <p class="entry-title">${r.article_title}</p>
+          <div class="badges">
+            ${isNewToday ? `<span class="badge new-badge" title="Added to the site today">🆕 New</span>` : ""}
+            ${accounts.map(a => `<span class="badge account">Partner: ${a}</span>`).join("")}
+            <span class="badge"><span class="dot" style="background:${catColor}"></span>${CAT_SHORT[r.relevance_category] || r.relevance_category}</span>
+            <span class="badge">${r.region}</span>
+            <span class="badge">${r.source_site}</span>
+            <span class="badge mono">Published ${fmtDate(r.source_publish_date)}</span>
+            <span class="badge mono${isNewToday ? " added-today" : ""}">Added ${fmtDate(r.date_found)}</span>
+          </div>
+        </div>
+        <span></span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="entry-body">
+        <div class="entry-body-inner">
+          <div class="entry-body-content">
+            <p class="rationale"><strong>Why this priority —</strong> ${r.score_rationale}</p>
+            <p class="entry-summary">${r.summary}</p>
+            <ul class="entry-bullets">${r.bullet_points.map(b => `<li>${b}</li>`).join("")}</ul>
+            <p class="entry-insight"><strong>Relationship insight —</strong> ${r.underwriter_insights}</p>
+            <a class="entry-link" href="${r.link}" target="_blank" rel="noopener">Read full article <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17 17 7M7 7h10v10"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+
+  if (openIds.size) {
+    el.querySelectorAll(".entry").forEach(entry => {
+      if (openIds.has(entry.getAttribute("data-id"))) {
+        entry.classList.add("is-open");
+        const head = entry.querySelector(".entry-head");
+        if (head) head.setAttribute("aria-expanded", "true");
+      }
+    });
+  }
+
+  el.querySelectorAll(".entry-head").forEach(head => {
+    head.addEventListener("click", () => {
+      const entry = head.closest(".entry");
+      const open = entry.classList.toggle("is-open");
+      head.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+  });
+}
+
+/* ---------- Citation jump (analysis assertion -> source article card) ---------- */
+function jumpToArticle(id, evt) {
+  if (evt) evt.preventDefault();
+  let entry = document.getElementById("article-" + id);
+  if (!entry) return false;
+
+  if (entry.hidden) {
+    const resetBtn = document.getElementById("reset-btn");
+    if (resetBtn) resetBtn.click();
+    entry = document.getElementById("article-" + id);
+    if (!entry) return false;
+  }
+
+  const head = entry.querySelector(".entry-head");
+  if (!entry.classList.contains("is-open")) {
+    entry.classList.add("is-open");
+    if (head) head.setAttribute("aria-expanded", "true");
+  }
+
+  entry.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  entry.classList.remove("is-highlighted");
+  void entry.offsetWidth;
+  entry.classList.add("is-highlighted");
+  setTimeout(() => entry.classList.remove("is-highlighted"), 1900);
+
+  if (head) head.focus({ preventScroll: true });
+  return false;
+}
+window.jumpToArticle = jumpToArticle;
+
+/* ---------- Apply filters ---------- */
+function applyFilters() {
+  const entries = document.querySelectorAll(".entry");
+  let visible = 0;
+  entries.forEach(entry => {
+    const cat = entry.getAttribute("data-cat");
+    const region = entry.getAttribute("data-region");
+    const source = entry.getAttribute("data-source");
+    const accounts = entry.getAttribute("data-account").split("||").filter(Boolean);
+    const score = +entry.getAttribute("data-score");
+    const search = entry.getAttribute("data-search");
+    const pubdate = entry.getAttribute("data-pubdate");
+
+    const match =
+      (state.cat === "all" || cat === state.cat) &&
+      (state.region === "all" || region === state.region) &&
+      (state.source === "all" || source === state.source) &&
+      (state.account === "all" || accounts.includes(state.account)) &&
+      (score >= state.minScore) &&
+      (state.search === "" || search.includes(state.search)) &&
+      (state.dateFrom === "" || (pubdate && pubdate >= state.dateFrom)) &&
+      (state.dateTo === "" || (pubdate && pubdate <= state.dateTo));
+
+    entry.hidden = !match;
+    if (match) visible++;
+  });
+
+  document.getElementById("result-line").innerHTML = `Showing <strong>${visible}</strong> of ${DATA.length} entries`;
+  document.getElementById("empty-state").hidden = visible !== 0;
+}
+
+/* ---------- Live data (Supabase JS client, direct REST connection) ---------- */
+const SUPABASE_URL = "https://acxdvzcohjayvmqdaoke.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_2n567u9zKgZ-L-M_yGRf5Q_HEV_p1-f";
+const POLL_MS = 60000;
+
+function normalizeRow(r) {
+  const bp = typeof r.bullet_points === "string"
+    ? r.bullet_points.split("\n").map(s => s.replace(/^-\s*/, "").trim()).filter(Boolean)
+    : Array.isArray(r.bullet_points) ? r.bullet_points : [];
+  return {
+    id: r.id,
+    date_found: r.date_found,
+    article_title: r.article_title,
+    link: r.link,
+    source_site: r.source_site,
+    source_publish_date: r.source_publish_date,
+    region: r.region,
+    relevance_category: r.relevance_category,
+    underwriter_value_score: Number(r.underwriter_value_score),
+    score_rationale: r.score_rationale,
+    summary: r.summary,
+    bullet_points: bp,
+    underwriter_insights: r.underwriter_insights,
+    flagged_by_user: r.flagged_by_user === true ? "Yes" : r.flagged_by_user === false ? "No" : r.flagged_by_user,
+    related_account: r.related_account || null,
+    inserted_at: r.inserted_at
+  };
+}
+
+function renderConnState(status, message) {
+  const el = document.getElementById("conn-state");
+  if (!el) return;
+  if (status === "ok") { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = message || "";
+}
+
+function renderAll() {
+  const meta = document.getElementById("mast-meta");
+  if (LAST_UPDATED) {
+    meta.textContent = `Last Update: ${fmtDateTime(new Date(LAST_UPDATED).toISOString())}`;
+  } else {
+    meta.textContent = "Last Update: —";
+  }
+  renderCatToggle();
+  renderSelects();
+  renderLedger();
+
+  const pubDates = DATA.map(r => r.source_publish_date).filter(Boolean).sort();
+  if (pubDates.length) {
+    const min = pubDates[0], max = pubDates[pubDates.length - 1];
+    const dateFrom = document.getElementById("date-from");
+    const dateTo = document.getElementById("date-to");
+    dateFrom.min = dateTo.min = min;
+    dateFrom.max = dateTo.max = max;
+  }
+  applyFilters();
+}
+
+/* ---------- 6-Week Producer Partner Analysis ---------- */
+function fmtAnalysisDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+function fmtAnalysisDateTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d)) return iso;
+  return d.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+// This analysis only ever cites broker_producer_articles, so every source_refs entry is
+// type "article" pointing at an id on this same page -- no cross-page "episode" refs here.
+function normalizeRefs(it) {
+  if (Array.isArray(it.source_refs)) return it.source_refs;
+  if (Array.isArray(it.article_ids)) return it.article_ids.map(id => ({ type: "article", id }));
+  return [];
+}
+
+function citeMarks(citeIndex, refs) {
+  if (!Array.isArray(refs) || !refs.length) return "";
+  const links = refs.map(ref => {
+    const key = `${ref.type}:${ref.id}`;
+    if (!citeIndex.has(key)) citeIndex.set(key, citeIndex.size + 1);
+    const n = citeIndex.get(key);
+    return `<a href="#article-${ref.id}" onclick="return jumpToArticle(${ref.id}, event)" title="Jump to source article">${n}</a>`;
+  }).join(",");
+  return ` <span class="cite">[${links}]</span>`;
+}
+
+function renderCitedList(items, citeIndex) {
+  if (!Array.isArray(items)) return "";
+  return items.map(it => {
+    if (typeof it === "string") return `<li>${escapeHtml(it)}</li>`;
+    const label = it.label ? `<span class="analysis-item-label">${escapeHtml(it.label)}:</span> ` : "";
+    return `<li>${label}${escapeHtml(it.text)}${citeMarks(citeIndex, normalizeRefs(it))}</li>`;
+  }).join("");
+}
+
+function renderCitedParagraph(items, citeIndex) {
+  if (!items) return "";
+  if (typeof items === "string") return escapeHtml(items);
+  if (!Array.isArray(items)) return "";
+  return items.map(it =>
+    (typeof it === "string") ? escapeHtml(it) : `${escapeHtml(it.text)}${citeMarks(citeIndex, normalizeRefs(it))}`
+  ).join(" ");
+}
+
+function renderAnalysis(row) {
+  const card = document.getElementById("analysis-card");
+  if (!row || !row.analysis) { card.hidden = true; return; }
+
+  const a = row.analysis;
+  card.hidden = false;
+
+  document.getElementById("analysis-title").textContent =
+    `6-Week Producer Partner Analysis as of ${fmtAnalysisDateTime(row.inserted_at) || fmtAnalysisDate(row.analysis_date)}`;
+
+  const periodLabel = a.period_label ? `Last 6 Weeks (${a.period_label})` : "Last 6 Weeks";
+  const parts = [];
+  if (a.article_count != null) parts.push(`${a.article_count} article${a.article_count === 1 ? "" : "s"}`);
+  const countLabel = parts.length ? ` • ${parts.join(" + ")} analyzed` : "";
+  document.getElementById("analysis-meta").textContent = `${periodLabel}${countLabel}`;
+
+  const citeIndex = new Map();
+
+  document.getElementById("analysis-summary").innerHTML = renderCitedParagraph(a.executive_summary, citeIndex);
+
+  const shiftsEl = document.getElementById("analysis-shifts");
+  shiftsEl.innerHTML = renderCitedList(a.notable_shifts, citeIndex);
+  document.getElementById("analysis-shifts-section").hidden = !(a.notable_shifts && a.notable_shifts.length);
+
+  const themesEl = document.getElementById("analysis-themes");
+  themesEl.innerHTML = renderCitedList(a.key_themes, citeIndex);
+  document.getElementById("analysis-themes-section").hidden = !(a.key_themes && a.key_themes.length);
+
+  const risksEl = document.getElementById("analysis-risks");
+  risksEl.innerHTML = renderCitedList(a.critical_risks, citeIndex);
+  document.getElementById("analysis-risks-section").hidden = !(a.critical_risks && a.critical_risks.length);
+
+  document.getElementById("analysis-implications").innerHTML = renderCitedList(a.underwriting_implications, citeIndex);
+}
+
+function initAnalysisToggle() {
+  const toggle = document.getElementById("analysis-toggle");
+  const collapse = document.getElementById("analysis-collapse");
+  toggle.addEventListener("click", () => {
+    const expanded = collapse.classList.toggle("is-expanded");
+    toggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+    toggle.textContent = expanded ? "See less" : "See more";
+  });
+}
+
+const ANALYSIS_HISTORY_LIMIT = 11;
+let analysisHistory = [];
+let analysisIndex = 0;
+
+function updateAnalysisNav() {
+  const nav = document.getElementById("analysis-nav");
+  if (analysisHistory.length <= 1) { nav.hidden = true; return; }
+  nav.hidden = false;
+  document.getElementById("analysis-prev").disabled = analysisIndex >= analysisHistory.length - 1;
+  document.getElementById("analysis-next").disabled = analysisIndex <= 0;
+  document.getElementById("analysis-nav-pos").textContent = `${analysisIndex + 1} of ${analysisHistory.length}`;
+}
+
+function showAnalysisAt(index) {
+  if (index < 0 || index >= analysisHistory.length) return;
+  analysisIndex = index;
+  renderAnalysis(analysisHistory[analysisIndex]);
+  updateAnalysisNav();
+}
+
+function initAnalysisNav() {
+  document.getElementById("analysis-prev").addEventListener("click", () => showAnalysisAt(analysisIndex + 1));
+  document.getElementById("analysis-next").addEventListener("click", () => showAnalysisAt(analysisIndex - 1));
+}
+
+async function fetchAnalysisHistory() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("producer_partner_analysis")
+      .select("analysis_date, analysis, inserted_at")
+      .order("inserted_at", { ascending: false })
+      .limit(ANALYSIS_HISTORY_LIMIT);
+    if (error || !data || !data.length) {
+      analysisHistory = [];
+      renderAnalysis(null);
+      document.getElementById("analysis-nav").hidden = true;
+      return;
+    }
+    analysisHistory = data;
+    analysisIndex = 0;
+    renderAnalysis(analysisHistory[0]);
+    updateAnalysisNav();
+  } catch (e) {
+    analysisHistory = [];
+    renderAnalysis(null);
+    document.getElementById("analysis-nav").hidden = true;
+  }
+}
+
+let supabaseClient = null;
+let pollTimer = null;
+
+async function fetchArticles() {
+  const { data, error } = await supabaseClient
+    .from("broker_producer_articles")
+    .select("id, date_found, article_title, link, source_site, source_publish_date, region, relevance_category, underwriter_value_score, score_rationale, summary, bullet_points, underwriter_insights, flagged_by_user, related_account, inserted_at")
+    .order("date_found", { ascending: false })
+    .order("underwriter_value_score", { ascending: false });
+
+  if (error) {
+    renderConnState("error", DATA.length
+      ? `Couldn't refresh from Supabase just now (${error.message}) — showing the last data that loaded successfully.`
+      : `Couldn't reach Supabase (${error.message}). Retrying automatically.`);
+    return;
+  }
+
+  DATA = (data || []).map(normalizeRow);
+  const insertTimes = DATA.map(r => r.inserted_at ? new Date(r.inserted_at).getTime() : NaN).filter(t => !isNaN(t));
+  LAST_UPDATED = insertTimes.length ? Math.max(...insertTimes) : null;
+  renderConnState("ok");
+  renderAll();
+}
+
+function boot() {
+  renderConnState("loading", "Connecting to Supabase…");
+  document.getElementById("date-from").value = state.dateFrom;
+  renderAll();
+
+  if (typeof window.supabase === "undefined" || !window.supabase.createClient) {
+    renderConnState("error", "Couldn't load the Supabase client library. Check your network connection and reload.");
+    return;
+  }
+
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  initAnalysisToggle();
+  initAnalysisNav();
+  fetchAnalysisHistory();
+  fetchArticles();
+  pollTimer = setInterval(fetchArticles, POLL_MS);
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") fetchArticles();
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
