@@ -60,9 +60,25 @@
     -webkit-font-smoothing: antialiased;
     line-height: 1.5;
   }
-  .app { max-width: 560px; margin: 0 auto; padding: 32px 20px 80px; }
-  h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.005em; margin: 0 0 6px; }
-  .sub { color: var(--ink-secondary); font-size: 14px; margin: 0 0 28px; }
+
+  /* Locked (narrow, centered) vs unlocked (wide, grid) app widths */
+  .app { max-width: 560px; margin: 0 auto; padding: 32px 20px 60px; transition: max-width 120ms ease; }
+  .app.is-unlocked { max-width: 1180px; }
+
+  .site-nav {
+    display: flex; gap: 4px; margin-bottom: 16px; padding: 4px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 9px;
+    box-shadow: var(--shadow-1); max-width: 640px;
+  }
+  .site-nav a {
+    flex: 1; text-align: center; text-decoration: none; font-size: 13px; font-weight: 600;
+    color: var(--ink-secondary); padding: 8px 12px; border-radius: 6px;
+  }
+  .site-nav a:hover { background: var(--surface-2); color: var(--ink); }
+  .site-nav a.is-active { background: var(--accent); color: var(--accent-ink); }
+
+  h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.005em; margin: 0 0 4px; }
+  .sub { color: var(--ink-secondary); font-size: 13px; margin: 0 0 18px; max-width: 74ch; }
 
   .lock-screen {
     background: var(--surface);
@@ -74,65 +90,89 @@
   }
   .lock-screen p { color: var(--ink-secondary); font-size: 14px; margin: 0 0 16px; }
 
+  /* ---------- Unlocked layout: compact grid of cards ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 10px;
     box-shadow: var(--shadow-1);
-    padding: 20px;
-    margin-bottom: 18px;
+    padding: 14px 16px 15px;
+    display: flex;
+    flex-direction: column;
   }
-  .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 4px; }
-  .card .hint { font-size: 12.5px; color: var(--muted); margin: 0 0 14px; }
+  .card h2 { font-size: 13.5px; font-weight: 700; margin: 0 0 3px; display: flex; align-items: center; gap: 7px; }
+  .card h2 .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .card .hint { font-size: 11px; color: var(--muted); margin: 0 0 9px; line-height: 1.4; }
 
-  label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink-secondary); margin: 0 0 5px; }
-  input[type="text"], input[type="password"], input[type="url"], textarea, select {
+  label { display: block; font-size: 11px; font-weight: 600; color: var(--ink-secondary); margin: 0 0 3px; }
+  input[type="text"], input[type="password"], input[type="url"], input[type="number"], textarea, select {
     width: 100%;
     font: inherit;
-    font-size: 14px;
-    padding: 9px 11px;
+    font-size: 13px;
+    padding: 7px 9px;
     border-radius: 6px;
     border: 1px solid var(--border-strong);
     background: var(--surface-2);
     color: var(--ink);
-    margin-bottom: 14px;
+    margin-bottom: 8px;
   }
-  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 18px) center, calc(100% - 13px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
-  textarea { resize: vertical; min-height: 60px; }
+  select { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) center, calc(100% - 11px) center; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  textarea { resize: vertical; min-height: 40px; font-family: inherit; }
   input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .field-hint { font-size: 11.5px; color: var(--muted); margin: -10px 0 14px; }
+  .field-hint { font-size: 10.5px; color: var(--muted); margin: -5px 0 8px; }
+  .field-row { display: flex; gap: 8px; }
+  .field-row > div { flex: 1; min-width: 0; }
+
+  .card-foot { margin-top: auto; padding-top: 2px; }
 
   button {
     all: unset;
     cursor: pointer;
     display: inline-block;
     font: inherit;
-    font-size: 13.5px;
+    font-size: 12.5px;
     font-weight: 600;
     color: var(--accent-ink);
     background: var(--accent);
-    padding: 9px 18px;
+    padding: 7px 15px;
     border-radius: 20px;
     text-align: center;
   }
   button:hover { opacity: 0.92; }
   button:disabled { opacity: 0.5; cursor: default; }
 
-  .msg { font-size: 13px; padding: 9px 12px; border-radius: 6px; margin-top: 10px; display: none; }
+  .msg { font-size: 12px; padding: 7px 10px; border-radius: 6px; margin-top: 8px; display: none; }
   .msg.show { display: block; }
   .msg.ok { background: var(--ok-wash); border: 1px solid var(--ok-wash-2); color: var(--ok); }
   .msg.err { background: var(--accent-wash); border: 1px solid var(--accent-wash-2); color: var(--accent); }
-  .card .empty { font-size: 13px; color: var(--muted); }
 
   #app-locked { }
   #app-unlocked { display: none; }
+
+  @media (max-width: 700px) {
+    .app.is-unlocked { max-width: 100%; padding: 20px 14px 40px; }
+    .grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app-shell">
+
+  <nav class="site-nav" aria-label="Site">
+    <a href="index.html">Market Watch</a>
+    <a href="broker-watch.html">Broker Watch</a>
+    <a href="podcasts.html">Podcasts</a>
+    <a href="admin.html" class="is-active">Admin</a>
+  </nav>
 
   <h1>Surety Dashboard Admin</h1>
-  <p class="sub">Add companies to the account watchlist, queue article links, add a trade publication for the overnight process to check directly each morning, or hand it a podcast episode's YouTube link.</p>
+  <p class="sub">Add companies to the account or broker/producer-partner watchlists, queue article links, add a trade publication for the overnight process to check directly each morning, or hand it a podcast episode's YouTube link.</p>
 
   <div id="app-locked" class="lock-screen">
     <p>Enter the password to continue.</p>
@@ -142,65 +182,90 @@
   </div>
 
   <div id="app-unlocked">
+    <div class="grid">
 
-    <div class="card">
-      <h2>Add a company</h2>
-      <p class="hint">Adds to the account_watchlist table. The daily tracker will start searching for news on this company going forward.</p>
-      <label for="company-name">Company name</label>
-      <input type="text" id="company-name" placeholder="e.g. Lennar">
-      <button id="submit-company" type="button">Add company</button>
-      <div class="msg" id="company-msg"></div>
+      <div class="card">
+        <h2><span class="dot" style="background:#2a78d6"></span>Add a company</h2>
+        <p class="hint">Adds to account_watchlist. The daily tracker starts searching for news on this company going forward.</p>
+        <label for="company-name">Company name</label>
+        <input type="text" id="company-name" placeholder="e.g. Lennar">
+        <div class="card-foot">
+          <button id="submit-company" type="button">Add company</button>
+          <div class="msg" id="company-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:#6d3fd1"></span>Add a broker / producer partner</h2>
+        <p class="hint">Adds to broker_producer_watchlist. Tracked separately on the Broker Watch page, not the main feed.</p>
+        <label for="broker-name">Company name</label>
+        <input type="text" id="broker-name" placeholder="e.g. Acrisure (US)">
+        <div class="card-foot">
+          <button id="submit-broker-company" type="button">Add partner</button>
+          <div class="msg" id="broker-company-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:#eda100"></span>Queue an article</h2>
+        <p class="hint">The overnight process fetches, scores, and adds this link the next time it runs, regardless of newsworthiness.</p>
+        <label for="article-link">Article link</label>
+        <input type="url" id="article-link" placeholder="https://...">
+        <label for="article-notes">Notes (optional)</label>
+        <textarea id="article-notes" placeholder="Any context for why this is worth including"></textarea>
+        <div class="card-foot">
+          <button id="submit-article" type="button">Add to queue</button>
+          <div class="msg" id="article-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:#1baf7a"></span>Add a trade publication</h2>
+        <p class="hint">Adds to target_trade_publications. Checked directly each morning in addition to keyword search.</p>
+
+        <label for="pub-name">Publication name</label>
+        <input type="text" id="pub-name" placeholder="e.g. Surety Bond Quarterly">
+
+        <label for="pub-url">Feed or listing URL</label>
+        <input type="url" id="pub-url" placeholder="https://...">
+        <p class="field-hint">RSS/Atom feed URL if it has one (usually /feed/ or /rss); otherwise its most-recent-articles listing page.</p>
+
+        <div class="field-row">
+          <div>
+            <label for="pub-type">Source type</label>
+            <select id="pub-type">
+              <option value="RSS">RSS / Atom feed</option>
+              <option value="HTML_LISTING">Web page (no feed)</option>
+            </select>
+          </div>
+        </div>
+
+        <label for="pub-notes">Notes (optional)</label>
+        <textarea id="pub-notes" placeholder="Any caveats, e.g. a specific feed path or known quirks"></textarea>
+
+        <div class="card-foot">
+          <button id="submit-publication" type="button">Add publication</button>
+          <div class="msg" id="publication-msg"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2><span class="dot" style="background:#2a78d6"></span>Add a podcast episode link</h2>
+        <p class="hint">The tracker detects new episodes on its own but usually can't find the YouTube video — paste it here once found.</p>
+
+        <label for="episode-select">Episode</label>
+        <select id="episode-select"><option value="">Loading…</option></select>
+
+        <label for="episode-url">YouTube link</label>
+        <input type="url" id="episode-url" placeholder="https://www.youtube.com/watch?v=…">
+
+        <div class="card-foot">
+          <button id="submit-episode" type="button">Add link</button>
+          <div class="msg" id="episode-msg"></div>
+        </div>
+      </div>
+
     </div>
-
-    <div class="card">
-      <h2>Queue an article</h2>
-      <p class="hint">Replaces the old Google Sheet queue. The overnight process will fetch, score, and add this link the next time it runs.</p>
-      <label for="article-link">Article link</label>
-      <input type="url" id="article-link" placeholder="https://...">
-      <label for="article-notes">Notes (optional)</label>
-      <textarea id="article-notes" placeholder="Any context for why this is worth including"></textarea>
-      <button id="submit-article" type="button">Add to queue</button>
-      <div class="msg" id="article-msg"></div>
-    </div>
-
-    <div class="card">
-      <h2>Add a trade publication</h2>
-      <p class="hint">Adds to the target_trade_publications table. Each morning the daily tracker fetches this source directly, in addition to keyword search — good for a site with a genuine, recurring surety/construction-industry beat.</p>
-
-      <label for="pub-name">Publication name</label>
-      <input type="text" id="pub-name" placeholder="e.g. Surety Bond Quarterly">
-
-      <label for="pub-url">Feed or listing URL</label>
-      <input type="url" id="pub-url" placeholder="https://...">
-      <p class="field-hint">If it has an RSS/Atom feed, use that URL (usually ends in /feed/ or /rss). Otherwise use the page that lists its most recent articles.</p>
-
-      <label for="pub-type">Source type</label>
-      <select id="pub-type">
-        <option value="RSS">RSS / Atom feed</option>
-        <option value="HTML_LISTING">Web page (no feed — just a listing page)</option>
-      </select>
-
-      <label for="pub-notes">Notes (optional)</label>
-      <textarea id="pub-notes" placeholder="Any caveats, e.g. a specific feed path to use or known quirks"></textarea>
-
-      <button id="submit-publication" type="button">Add publication</button>
-      <div class="msg" id="publication-msg"></div>
-    </div>
-
-    <div class="card">
-      <h2>Add a podcast episode link</h2>
-      <p class="hint">The daily tracker detects new "Let's Get Surety" episodes on its own but usually can't find the YouTube video by itself — paste it here once you've found it. The next scheduled run fetches and scores the transcript.</p>
-
-      <label for="episode-select">Episode</label>
-      <select id="episode-select"><option value="">Loading…</option></select>
-
-      <label for="episode-url">YouTube link</label>
-      <input type="url" id="episode-url" placeholder="https://www.youtube.com/watch?v=…">
-
-      <button id="submit-episode" type="button">Add link</button>
-      <div class="msg" id="episode-msg"></div>
-    </div>
-
   </div>
 
 </div>
@@ -291,6 +356,7 @@ document.getElementById("unlock-btn").addEventListener("click", async () => {
   PASSWORD = attempt;
   document.getElementById("app-locked").style.display = "none";
   document.getElementById("app-unlocked").style.display = "block";
+  document.getElementById("app-shell").classList.add("is-unlocked");
   loadPendingEpisodes();
 });
 
@@ -305,6 +371,16 @@ document.getElementById("submit-company").addEventListener("click", async () => 
   const name = nameInput.value.trim();
   if (!name) { showMsg(msgEl, "Enter a company name first.", false); return; }
   await submit("add_company", { company_name: name }, msgEl, btn);
+  nameInput.value = "";
+});
+
+document.getElementById("submit-broker-company").addEventListener("click", async () => {
+  const nameInput = document.getElementById("broker-name");
+  const msgEl = document.getElementById("broker-company-msg");
+  const btn = document.getElementById("submit-broker-company");
+  const name = nameInput.value.trim();
+  if (!name) { showMsg(msgEl, "Enter a company name first.", false); return; }
+  await submit("add_broker_company", { company_name: name }, msgEl, btn);
   nameInput.value = "";
 });
 
