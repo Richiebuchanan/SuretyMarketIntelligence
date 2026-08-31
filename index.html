@@ -162,9 +162,9 @@
   .site-nav a:hover { color: var(--ink); }
   .site-nav a.is-current { color: var(--accent); border-bottom-color: var(--accent); }
   .page-tagline { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); max-width: 62ch; }
-  .overview-cta { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
-  .overview-cta a { color: var(--link); font-weight: 700; text-decoration: none; }
-  .overview-cta a:hover, .overview-cta a:focus-visible { text-decoration: underline; }
+  .masthead-title-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .overview-link { color: var(--link); font-weight: 700; font-size: 13px; text-decoration: none; white-space: nowrap; }
+  .overview-link:hover, .overview-link:focus-visible { text-decoration: underline; }
 
   /* ---------- Filter bar ---------- */
   .priority-note {
@@ -715,7 +715,10 @@
 <div class="app">
 
   <header class="masthead">
-    <h1>Surety Market Intelligence</h1>
+    <div class="masthead-title-row">
+      <h1>Surety Market Intelligence</h1>
+      <a class="overview-link" href="overview.html">Website Overview</a>
+    </div>
     <p class="mast-sub">Surety News - aggregated, summarized and prioritized with underwriting in mind. Refreshed daily.</p>
     <div class="mast-meta" id="mast-meta">Last Update: —</div>
     <nav class="site-nav">
@@ -725,7 +728,6 @@
     </nav>
 
     <p class="page-tagline">Daily surety &amp; construction news — scored, summarized, and sourced for underwriting review.</p>
-    <p class="overview-cta"><a href="overview.html">What is this?</a> — see the Overview for how the pipeline works and what's next.</p>
 
     <div class="masthead-divider"></div>
 
