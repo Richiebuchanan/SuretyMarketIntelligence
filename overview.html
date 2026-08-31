@@ -84,6 +84,13 @@
   .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
   .wrap { max-width: 840px; margin: 0 auto; padding: 48px 24px 64px; }
 
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--muted); text-decoration: none; margin-bottom: 22px;
+  }
+  .back-link:hover, .back-link:focus-visible { color: var(--accent); }
+
   .eyebrow {
     font-size: 12px;
     letter-spacing: 0.14em;
@@ -260,17 +267,22 @@
 <body>
 <div class="wrap">
 
-  <div class="eyebrow mono">SURETY MARKET INTELLIGENCE</div>
+  <a class="back-link mono" href="index.html">← SURETY MARKET INTELLIGENCE</a>
+
+  <div class="eyebrow mono">OVERVIEW</div>
   <h1>A live intelligence feed, built for underwriting.</h1>
   <p class="lede">
     One continuously-updated system that reads the surety and construction press, runs a targeted
-    sweep across a watchlist of top accounts, and now transcribes industry podcast episodes — scoring
-    everything it finds for underwriting relevance and turning it into a prioritized, filterable,
-    fully-sourced feed built for both desk-level underwriting and portfolio-level leadership.
+    sweep across a watchlist of top accounts and a separate watchlist of broker/producer partners,
+    and transcribes industry podcast episodes — scoring everything it finds for underwriting relevance
+    and turning it into a prioritized, filterable, fully-sourced feed built for both desk-level
+    underwriting and portfolio-level leadership.
   </p>
   <div class="statline">
     <span class="dot"></span> Refreshes automatically, every day
-    <span class="sep">•</span> 280 articles archived across 98 tracked accounts
+    <span class="sep">•</span> 299 articles archived across 124 tracked accounts
+    <span class="sep">•</span> 28 broker/producer articles across 56 tracked partners
+    <span class="sep">•</span> 15 podcast episodes transcribed
     <span class="sep">•</span> Sourced from ENR, Construction Dive, Insurance Business, Insurance Journal, NASBP, SFAA, Reinsurance News, Bloomberg &amp; more
   </div>
   <hr class="rule">
@@ -281,11 +293,12 @@
       Surety Market Intelligence is an automated research pipeline, not a static report. Every day it searches
       13 tracked trade-press feeds and public sources for surety-relevant news — bond claims and defaults,
       contractor bankruptcies, infrastructure funding, project awards, rating actions — <b>and</b> runs a
-      targeted sweep across a watchlist of 98 top accounts. It also transcribes and scores every episode of
-      NASBP's <i>Let's Get Surety</i> podcast, folding that perspective into the same feed. Each item is scored
-      1–10 for underwriting actionability, classified as Contract or Commercial Surety, summarized, and written
-      into a permanent, live-queried archive. The result is a dashboard that stays current without anyone
-      having to maintain it.
+      targeted sweep across a watchlist of 124 top accounts <b>and</b> a separate watchlist of 56 broker/producer
+      partners, feeding a distinct Broker Watch page focused on distribution-relationship risk. It also
+      transcribes and scores every episode of NASBP's <i>Let's Get Surety</i> podcast, folding that perspective
+      into the same feed. Each item is scored 1–10 for underwriting actionability, classified as Contract or
+      Commercial Surety, summarized, and written into a permanent, live-queried archive. The result is a
+      dashboard that stays current without anyone having to maintain it.
     </p>
   </section>
 
@@ -298,6 +311,7 @@
           <li>One prioritized feed replaces manually scanning a dozen trade sites every morning</li>
           <li>A 1–10 score measures underwriting <i>actionability</i> — not just whether the news is good or bad</li>
           <li>Account tracking flags risk signal tied to your specific bonded relationships automatically</li>
+          <li>Broker Watch flags M&amp;A, leadership moves, and team departures at your distribution partners</li>
           <li>Podcast transcripts surface underwriter perspective and market color you'd otherwise have to listen for</li>
           <li>Every AI-written summary links back to its source — nothing is taken on faith</li>
         </ul>
@@ -308,7 +322,7 @@
           <li>A standing 6-week market analysis gives a portfolio-level pulse without reading every article</li>
           <li>Region, category, and account breakdowns show where exposure is concentrating</li>
           <li>A compounding asset — new source coverage adds value over time, not a one-off deliverable</li>
-          <li>280 articles and counting, growing daily without added headcount</li>
+          <li>299 articles and counting, growing daily without added headcount</li>
           <li>Fully transparent by design: AI-generated content is labeled and cited throughout</li>
         </ul>
       </div>
@@ -321,7 +335,7 @@
       <div class="step">
         <div class="num mono">01 — SEARCH</div>
         <div class="title">Trade press, accounts &amp; podcasts</div>
-        <div class="desc">Scans 13 surety/construction feeds, runs a targeted search across all 98 watchlist accounts, and pulls new podcast episodes for transcription.</div>
+        <div class="desc">Scans 13 surety/construction feeds, runs a targeted search across all 124 watchlist accounts and 56 broker/producer partners, and pulls new podcast episodes for transcription.</div>
       </div>
       <div class="step">
         <div class="num mono">02 — SCORE</div>
@@ -345,7 +359,11 @@
     <div class="section-label mono">WHAT'S NEXT</div>
     <div class="shipped-note">
       <span class="check">✓</span>
-      <span><b>Industry Podcasts</b> shipped — NASBP's <i>Let's Get Surety</i> is now live in the feed above, with every episode transcribed and scored.</span>
+      <span><b>Broker/Producer Partner Watch</b> shipped — a separate watchlist and dashboard now tracks M&amp;A, leadership moves, and relationship risk across 56 distribution partners.</span>
+    </div>
+    <div class="shipped-note">
+      <span class="check">✓</span>
+      <span><b>Industry Podcasts</b> shipped — NASBP's <i>Let's Get Surety</i> is live in the feed, with every episode transcribed and scored.</span>
     </div>
     <div class="next-grid">
       <div class="next-card">
@@ -390,7 +408,7 @@
     </div>
   </section>
 
-  <div class="footer mono">SURETY MARKET INTELLIGENCE — INTERNAL OVERVIEW — UPDATED AUGUST 30, 2026</div>
+  <div class="footer mono">SURETY MARKET INTELLIGENCE — INTERNAL OVERVIEW — UPDATED AUGUST 31, 2026</div>
 
 </div>
 </body>
