@@ -251,7 +251,7 @@
 
       <div class="card">
         <h2><span class="dot" style="background:#2a78d6"></span>Add a podcast episode link</h2>
-        <p class="hint">The tracker detects new episodes on its own but usually can't find the YouTube video — paste it here once found.</p>
+        <p class="hint">The tracker detects new episodes on its own but usually can't find the YouTube video — paste it here once found. Multiple podcasts are tracked now, so pick the right show and episode together.</p>
 
         <label for="episode-select">Episode</label>
         <select id="episode-select"><option value="">Loading…</option></select>
@@ -281,6 +281,11 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
 }
 
+// Composite option values ("<show>|||<episode_number>") so episode numbers that
+// repeat across shows (e.g. both shows have an "episode 5") don't collide in the
+// dropdown -- split back apart on submit.
+const EPISODE_VALUE_SEP = "|||";
+
 async function loadPendingEpisodes() {
   const sel = document.getElementById("episode-select");
   sel.innerHTML = `<option value="">Loading…</option>`;
@@ -288,8 +293,9 @@ async function loadPendingEpisodes() {
 
   const { data, error } = await supabaseClient
     .from("podcast_episodes")
-    .select("episode_number, title, transcript_status")
+    .select("episode_number, title, transcript_status, show_name")
     .neq("transcript_status", "complete")
+    .order("show_name", { ascending: true })
     .order("episode_number", { ascending: false });
 
   if (error) {
@@ -300,9 +306,10 @@ async function loadPendingEpisodes() {
     sel.innerHTML = `<option value="">Nothing pending — every known episode already has a link</option>`;
     return;
   }
-  sel.innerHTML = data.map(ep =>
-    `<option value="${ep.episode_number}">#${ep.episode_number} — ${escapeHtml(ep.title)}${ep.transcript_status === "unavailable" ? " (retry)" : ""}</option>`
-  ).join("");
+  sel.innerHTML = data.map(ep => {
+    const value = `${ep.show_name}${EPISODE_VALUE_SEP}${ep.episode_number}`;
+    return `<option value="${escapeHtml(value)}">${escapeHtml(ep.show_name)} #${ep.episode_number} — ${escapeHtml(ep.title)}${ep.transcript_status === "unavailable" ? " (retry)" : ""}</option>`;
+  }).join("");
 }
 
 function showMsg(el, text, ok) {
@@ -422,11 +429,15 @@ document.getElementById("submit-episode").addEventListener("click", async () => 
   const urlInput = document.getElementById("episode-url");
   const msgEl = document.getElementById("episode-msg");
   const btn = document.getElementById("submit-episode");
-  const episodeNumber = selectEl.value;
+  const rawValue = selectEl.value;
   const youtubeUrl = urlInput.value.trim();
-  if (!episodeNumber) { showMsg(msgEl, "Pick an episode first.", false); return; }
+  if (!rawValue) { showMsg(msgEl, "Pick an episode first.", false); return; }
+  const sepIndex = rawValue.lastIndexOf(EPISODE_VALUE_SEP);
+  const showName = sepIndex === -1 ? "" : rawValue.slice(0, sepIndex);
+  const episodeNumber = sepIndex === -1 ? rawValue : rawValue.slice(sepIndex + EPISODE_VALUE_SEP.length);
+  if (!showName || !episodeNumber) { showMsg(msgEl, "Pick an episode first.", false); return; }
   if (!youtubeUrl) { showMsg(msgEl, "Enter a YouTube link first.", false); return; }
-  await submit("add_episode_link", { episode_number: Number(episodeNumber), youtube_url: youtubeUrl }, msgEl, btn);
+  await submit("add_episode_link", { episode_number: Number(episodeNumber), show_name: showName, youtube_url: youtubeUrl }, msgEl, btn);
   urlInput.value = "";
   loadPendingEpisodes();
 });
