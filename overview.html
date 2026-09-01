@@ -280,9 +280,9 @@
   </p>
   <div class="statline">
     <span class="dot"></span> Refreshes automatically, every day
-    <span class="sep">•</span> 299 articles archived across 124 tracked accounts
-    <span class="sep">•</span> 28 broker/producer articles across 56 tracked partners
-    <span class="sep">•</span> 15 podcast episodes transcribed
+    <span class="sep">•</span> <span class="dyn-articles">299</span> articles archived across <span class="dyn-accounts">124</span> tracked accounts
+    <span class="sep">•</span> <span class="dyn-broker-articles">28</span> broker/producer articles across <span class="dyn-partners">56</span> tracked partners
+    <span class="sep">•</span> <span class="dyn-episodes">15</span> podcast episodes transcribed
     <span class="sep">•</span> Sourced from ENR, Construction Dive, Insurance Business, Insurance Journal, NASBP, SFAA, Reinsurance News, Bloomberg &amp; more
   </div>
   <hr class="rule">
@@ -293,7 +293,7 @@
       Surety Market Intelligence is an automated research pipeline, not a static report. Every day it searches
       13 tracked trade-press feeds and public sources for surety-relevant news — bond claims and defaults,
       contractor bankruptcies, infrastructure funding, project awards, rating actions — <b>and</b> runs a
-      targeted sweep across a watchlist of 124 top accounts <b>and</b> a separate watchlist of 56 broker/producer
+      targeted sweep across a watchlist of <span class="dyn-accounts">124</span> top accounts <b>and</b> a separate watchlist of <span class="dyn-partners">56</span> broker/producer
       partners, feeding a distinct Broker Watch page focused on distribution-relationship risk. It also
       transcribes and scores every episode of NASBP's <i>Let's Get Surety</i> podcast, folding that perspective
       into the same feed. Each item is scored 1–10 for underwriting actionability, classified as Contract or
@@ -322,7 +322,7 @@
           <li>A standing 6-week market analysis gives a portfolio-level pulse without reading every article</li>
           <li>Region, category, and account breakdowns show where exposure is concentrating</li>
           <li>A compounding asset — new source coverage adds value over time, not a one-off deliverable</li>
-          <li>299 articles and counting, growing daily without added headcount</li>
+          <li><span class="dyn-articles">299</span> articles and counting, growing daily without added headcount</li>
           <li>Fully transparent by design: AI-generated content is labeled and cited throughout</li>
         </ul>
       </div>
@@ -335,7 +335,7 @@
       <div class="step">
         <div class="num mono">01 — SEARCH</div>
         <div class="title">Trade press, accounts &amp; podcasts</div>
-        <div class="desc">Scans 13 surety/construction feeds, runs a targeted search across all 124 watchlist accounts and 56 broker/producer partners, and pulls new podcast episodes for transcription.</div>
+        <div class="desc">Scans 13 surety/construction feeds, runs a targeted search across all <span class="dyn-accounts">124</span> watchlist accounts and <span class="dyn-partners">56</span> broker/producer partners, and pulls new podcast episodes for transcription.</div>
       </div>
       <div class="step">
         <div class="num mono">02 — SCORE</div>
@@ -359,7 +359,7 @@
     <div class="section-label mono">WHAT'S NEXT</div>
     <div class="shipped-note">
       <span class="check">✓</span>
-      <span><b>Broker/Producer Partner Watch</b> shipped — a separate watchlist and dashboard now tracks M&amp;A, leadership moves, and relationship risk across 56 distribution partners.</span>
+      <span><b>Broker/Producer Partner Watch</b> shipped — a separate watchlist and dashboard now tracks M&amp;A, leadership moves, and relationship risk across <span class="dyn-partners">56</span> distribution partners.</span>
     </div>
     <div class="shipped-note">
       <span class="check">✓</span>
@@ -408,8 +408,59 @@
     </div>
   </section>
 
-  <div class="footer mono">SURETY MARKET INTELLIGENCE — INTERNAL OVERVIEW — UPDATED AUGUST 31, 2026</div>
+  <div class="footer mono">SURETY MARKET INTELLIGENCE — INTERNAL OVERVIEW — LIVE COUNTS, UPDATED AUTOMATICALLY</div>
 
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  // Live-count patch (2026-09-01): the stat numbers above ship as static fallback text
+  // (so the page still reads fine if this script fails or is offline), then this script
+  // overwrites every .dyn-* span with a live count from Supabase on load. Keep the
+  // hardcoded numbers in the HTML roughly current when hand-editing this page, but they
+  // no longer need to be exact -- this script is now the source of truth at runtime.
+  const SUPABASE_URL = "https://acxdvzcohjayvmqdaoke.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_2n567u9zKgZ-L-M_yGRf5Q_HEV_p1-f";
+
+  function setAll(selector, value) {
+    document.querySelectorAll(selector).forEach(function (el) {
+      el.textContent = value;
+    });
+  }
+
+  async function loadLiveCounts() {
+    if (!window.supabase) return; // library failed to load -- keep the static fallback numbers
+    try {
+      const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const [articles, accounts, brokerArticles, partners, episodes] = await Promise.all([
+        client.from('surety_articles').select('*', { count: 'exact', head: true }),
+        client.from('account_watchlist').select('*', { count: 'exact', head: true }),
+        client.from('broker_producer_articles').select('*', { count: 'exact', head: true }),
+        client.from('broker_producer_watchlist').select('*', { count: 'exact', head: true }),
+        client.from('podcast_episodes').select('*', { count: 'exact', head: true }).eq('transcript_status', 'complete'),
+      ]);
+
+      if (typeof articles.count === 'number') setAll('.dyn-articles', articles.count.toLocaleString());
+      if (typeof accounts.count === 'number') setAll('.dyn-accounts', accounts.count.toLocaleString());
+      if (typeof brokerArticles.count === 'number') setAll('.dyn-broker-articles', brokerArticles.count.toLocaleString());
+      if (typeof partners.count === 'number') setAll('.dyn-partners', partners.count.toLocaleString());
+      if (typeof episodes.count === 'number') setAll('.dyn-episodes', episodes.count.toLocaleString());
+    } catch (err) {
+      // Network hiccup, RLS change, or table rename -- fail quietly and leave the
+      // static fallback numbers already printed in the HTML rather than showing blanks.
+      console.warn('Overview live counts failed to load; showing static fallback numbers.', err);
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadLiveCounts);
+  } else {
+    loadLiveCounts();
+  }
+})();
+</script>
+
 </body>
 </html>
