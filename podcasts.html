@@ -575,10 +575,25 @@ function renderAll() {
 }
 
 async function fetchEpisodes() {
-  const { data, error } = await supabaseClient
-    .from("podcast_episodes")
-    .select("id, episode_number, title, publish_date, link, youtube_url, apple_podcasts_url, spotify_url, show_name, transcript, transcript_status, summary, bullet_points, underwriter_insights, relevance_category, underwriter_value_score, guests, related_account, inserted_at")
-    .order("episode_number", { ascending: false });
+  // Fetch episodes and the daily pipeline's run log in parallel. "Last Update" should
+  // reflect the most recent successful pipeline run, not just the newest inserted row --
+  // a run that only updates existing rows (e.g. completing a transcript, or marking a
+  // stale pending_link 'unavailable') or finds no new episode at all still counts as a
+  // real refresh. pipeline_runs is a lightweight append-only log the daily scheduled task
+  // writes one row to at the very end of every run, regardless of what (if anything)
+  // changed in the data tables.
+  const [episodesRes, runsRes] = await Promise.all([
+    supabaseClient
+      .from("podcast_episodes")
+      .select("id, episode_number, title, publish_date, link, youtube_url, apple_podcasts_url, spotify_url, show_name, transcript, transcript_status, summary, bullet_points, underwriter_insights, relevance_category, underwriter_value_score, guests, related_account, inserted_at")
+      .order("episode_number", { ascending: false }),
+    supabaseClient
+      .from("pipeline_runs")
+      .select("run_completed_at")
+      .order("run_completed_at", { ascending: false })
+      .limit(1),
+  ]);
+  const { data, error } = episodesRes;
 
   if (error) {
     renderConnState("error", DATA.length
@@ -588,6 +603,10 @@ async function fetchEpisodes() {
   }
   DATA = data || [];
   const insertTimes = DATA.map(r => r.inserted_at ? new Date(r.inserted_at).getTime() : NaN).filter(t => !isNaN(t));
+  const latestRun = runsRes.data && runsRes.data[0] && runsRes.data[0].run_completed_at
+    ? new Date(runsRes.data[0].run_completed_at).getTime()
+    : NaN;
+  if (!isNaN(latestRun)) insertTimes.push(latestRun);
   LAST_UPDATED = insertTimes.length ? Math.max(...insertTimes) : null;
   renderConnState("ok");
   renderAll();
