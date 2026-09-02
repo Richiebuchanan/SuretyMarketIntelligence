@@ -434,7 +434,13 @@ function renderLedger() {
         <div class="entry-body-inner">
           <div class="entry-body-content">
             ${isPending
-              ? `<p class="pending-note">${r.transcript_status === "pending_link" ? "This episode has been detected but no YouTube video link has been submitted yet, so no transcript or summary is available." : "A YouTube link is on file but the transcript hasn't been fetched/scored yet."}</p>`
+              ? `<p class="pending-note">${
+                  r.transcript_status === "pending_link"
+                    ? "This episode has been detected but no YouTube video link has been found or submitted yet, so no transcript or summary is available."
+                    : r.transcript_status === "unavailable"
+                    ? "A YouTube video for this episode couldn't be found (or its transcript couldn't be retrieved), so no summary is available. A corrected link can still be submitted via admin.html at any time."
+                    : "A YouTube link is on file but the transcript hasn't been fetched/scored yet."
+                }</p>`
               : `
                 ${guests.length ? `<p class="entry-summary"><strong>Guest${guests.length > 1 ? "s" : ""}:</strong> ${guests.map(escapeHtml).join(", ")}</p>` : ""}
                 <p class="entry-summary">${escapeHtml(r.summary || "")}</p>
