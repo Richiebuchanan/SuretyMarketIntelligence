@@ -294,7 +294,7 @@
       13 tracked trade-press feeds and public sources for surety-relevant news — bond claims and defaults,
       contractor bankruptcies, infrastructure funding, project awards, rating actions — <b>and</b> runs a
       targeted sweep across a list of <span class="dyn-accounts">124</span> major companies <b>and</b> a separate list of <span class="dyn-partners">56</span> insurance
-      brokers, feeding a distinct Broker Watch page focused on distribution-channel risk. It also
+      brokers, feeding a distinct Broker Watch page focused on distribution-channel risk. A third list of <span class="dyn-carriers">114</span> surety carrier groups feeds a Carrier Watch page. It also
       transcribes and scores every episode of NASBP's <i>Let's Get Surety</i> podcast, folding that perspective
       into the same feed. Each item is scored 1–10 for underwriting actionability, classified as Contract or
       Commercial Surety, summarized, and written into a permanent, live-queried archive. The result is a
@@ -434,18 +434,20 @@
     try {
       const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      const [articles, accounts, brokerArticles, partners, episodes] = await Promise.all([
+      const [articles, accounts, brokerArticles, partners, episodes, carriers] = await Promise.all([
         client.from('surety_articles').select('*', { count: 'exact', head: true }),
         client.from('account_watchlist').select('*', { count: 'exact', head: true }),
         client.from('broker_producer_articles').select('*', { count: 'exact', head: true }),
         client.from('broker_producer_watchlist').select('*', { count: 'exact', head: true }),
         client.from('podcast_episodes').select('*', { count: 'exact', head: true }).eq('transcript_status', 'complete'),
+        client.from('carrier_watchlist').select('*', { count: 'exact', head: true }),
       ]);
 
       if (typeof articles.count === 'number') setAll('.dyn-articles', articles.count.toLocaleString());
       if (typeof accounts.count === 'number') setAll('.dyn-accounts', accounts.count.toLocaleString());
       if (typeof brokerArticles.count === 'number') setAll('.dyn-broker-articles', brokerArticles.count.toLocaleString());
       if (typeof partners.count === 'number') setAll('.dyn-partners', partners.count.toLocaleString());
+      if (typeof carriers.count === 'number') setAll('.dyn-carriers', carriers.count.toLocaleString());
       if (typeof episodes.count === 'number') setAll('.dyn-episodes', episodes.count.toLocaleString());
     } catch (err) {
       // Network hiccup, RLS change, or table rename -- fail quietly and leave the
