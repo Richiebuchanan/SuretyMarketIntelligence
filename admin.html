@@ -133,6 +133,7 @@
 
   button {
     all: unset;
+    box-sizing: border-box;
     cursor: pointer;
     display: inline-block;
     font: inherit;
@@ -144,6 +145,7 @@
     border-radius: 20px;
     text-align: center;
   }
+  #unlock-btn { display: block; width: 100%; }
   button:hover { opacity: 0.92; }
   button:disabled { opacity: 0.5; cursor: default; }
 
@@ -172,12 +174,12 @@
   </nav>
 
   <h1>Surety Dashboard Admin</h1>
-  <p class="sub">Add companies to the account or broker/producer-partner watchlists, queue article links, add a trade publication for the overnight process to check directly each morning, or hand it a podcast episode's YouTube link.</p>
+  <p class="sub">Add companies to the company or insurance broker watchlists, queue article links, add a trade publication for the overnight process to check directly each morning, or hand it a podcast episode's YouTube link.</p>
 
   <div id="app-locked" class="lock-screen">
     <p>Enter the password to continue.</p>
     <input type="password" id="password-input" placeholder="Password" autocomplete="off">
-    <button id="unlock-btn" type="button" style="width:100%;">Unlock</button>
+    <button id="unlock-btn" type="button">Unlock</button>
     <div class="msg err" id="unlock-msg"></div>
   </div>
 
@@ -196,12 +198,12 @@
       </div>
 
       <div class="card">
-        <h2><span class="dot" style="background:#6d3fd1"></span>Add a broker / producer partner</h2>
+        <h2><span class="dot" style="background:#6d3fd1"></span>Add an insurance broker</h2>
         <p class="hint">Adds to broker_producer_watchlist. Tracked separately on the Broker Watch page, not the main feed.</p>
         <label for="broker-name">Company name</label>
         <input type="text" id="broker-name" placeholder="e.g. Acrisure (US)">
         <div class="card-foot">
-          <button id="submit-broker-company" type="button">Add partner</button>
+          <button id="submit-broker-company" type="button">Add broker</button>
           <div class="msg" id="broker-company-msg"></div>
         </div>
       </div>
