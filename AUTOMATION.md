@@ -1,7 +1,7 @@
 # How the automation actually works
 
 This is the "under the hood" doc for the daily pipeline that feeds the
-[Surety Market Intelligence dashboard](https://richiebuchanan.github.io/SuretyMarketIntelligence/).
+Surety Market Intelligence dashboard.
 It's written for a second engineer coming in cold — it explains the moving
 parts, why they're built the way they are, and includes the automation's
 literal source (a prompt, not a script — see below) so nothing is hidden.
@@ -11,11 +11,11 @@ process that fills it.
 
 ## The one-sentence version
 
-Once a day, a scheduled Claude session reads a runbook (a long, detailed
+Once a day, a scheduled LLM session reads a runbook (a long, detailed
 prompt — this *is* the program), spends 20-40 minutes searching the web and
 Supabase, and writes new rows into `surety_articles` and `market_analysis`.
 There is no server, no cron container, no Python process anywhere — the
-"backend" is a Claude scheduled task plus a Postgres database.
+"backend" is a scheduled LLM task plus a Postgres database.
 
 ## Why it's a prompt and not a script
 
@@ -23,7 +23,7 @@ This isn't a design choice made for novelty — it's because most of the hard
 part of this pipeline is judgment calls a script can't make: "is this
 headline about a $50M lawsuit actually surety-relevant or just general
 liability news," "does this contractor's land purchase rise to the level of
-an account-risk signal," "is this the same story as that other link, just
+a company-risk signal," "is this the same story as that other link, just
 from a different outlet." A traditional scraper-plus-rules pipeline would
 need a mountain of brittle heuristics to approximate what an LLM does by
 just reading the article. The tradeoff is that the "code" is an English
@@ -33,20 +33,20 @@ decisions" below for how that's handled.
 
 ## How it's triggered
 
-- **Mechanism:** a Claude scheduled task ("Routine"), not a GitHub Action,
-  not a cron job on a VM. It lives in Claude's own infrastructure, keyed to
-  Richie's account.
+- **Mechanism:** a scheduled LLM task, not a GitHub Action,
+  not a cron job on a VM. It lives in the LLM provider's own scheduler,
+  tied to the operator's account.
 - **Schedule:** `0 10 * * *` — once daily, 10:00 UTC.
-- **Session:** each firing spins up a brand new, memoryless Claude session
+- **Session:** each firing spins up a brand new, memoryless LLM session
   with three tool groups: Supabase (`execute_sql` against project
-  `acxdvzcohjayvmqdaoke`), `WebSearch`, and `WebFetch`. Nothing about the
+  `<your-project-id>`), `WebSearch`, and `WebFetch`. Nothing about the
   previous day's run carries over except what's in the database — which is
   exactly the point (see "no memory" below).
 - **Notifications:** the trigger has push+email notifications enabled at the
   infrastructure level, but the runbook itself doesn't call for an alert on
   a normal day — it just ends with a written summary. In practice you'd only
   expect a phone/email ping if the model judged something in a given run
-  worth interrupting Richie for (a run failure, a queue item that couldn't
+  worth interrupting the operator for (a run failure, a queue item that couldn't
   be processed, something like that) — routine "16 new articles added" runs
   stay quiet.
 
@@ -56,7 +56,7 @@ The full verbatim prompt is in the Appendix below. Here's what it's actually
 doing, step by step:
 
 1. **Check the flagged-link queue** (`surety_article_queue`). Anything
-   Richie (or anyone with DB access) has dropped in there gets processed
+   The operator (or anyone with DB access) has dropped in there gets processed
    this run, no matter how unremarkable it looks — a human explicitly asked
    for it, so it's exempt from every relevance/score filter below.
 
@@ -65,7 +65,7 @@ doing, step by step:
    memory the run has of every previous run — there is no other state.
 
 3. **Sweep the standing trade-press list** (`target_trade_publications`,
-   13 sites — 10 RSS feeds + 3 scraped HTML listing pages). For each site:
+   RSS feeds plus scraped HTML listing pages). For each site:
    fetch it, throw out anything whose link is already in the dedup set,
    triage the rest by headline alone (cheap), and only fully fetch articles
    that plausibly clear a defined relevance bar (bond disputes, contractor
@@ -75,7 +75,7 @@ doing, step by step:
    `bloomberg.com` (sites too broad-beat to put on the standing list) for
    general construction-economy signal.
 
-4. **Search each of the ~98 watchlist companies by name**, one plain web
+4. **Search each watchlist company by name**, one plain web
    search apiece. This step has a *deliberately higher bar* than step 3 —
    only leadership/ownership changes, M&A, distress, litigation, or major
    contract wins/losses qualify, and anything that clears classification
@@ -110,7 +110,7 @@ doing, step by step:
    executive summary, an optional "notable shifts" list flagging anywhere
    this run's conclusions diverge from the previous two weeks of analyses
    (queried separately, since each run otherwise has no memory of what it
-   told Richie before), plus three short, citation-backed lists (key themes
+   told the operator before), plus three short, citation-backed lists (key themes
    / critical risks / underwriting implications) — inserted as a new row.
    It never edits a past analysis; the dashboard's prev/next arrows page
    back through the last several rows so each one is a permanent,
@@ -146,7 +146,7 @@ deliberate: the queue and source list are operational/back-office data, not
 something a public dashboard visitor should see reflected anywhere.
 
 **The account-tracker step has a stricter relevance bar than everything
-else (5+/10 floor).** With ~98 companies searched daily, most of them small
+else (5+/10 floor).** With the whole company watchlist searched daily, most of them small
 private contractors, an unfiltered version of this step would flood the
 ledger with routine PR. The floor exists specifically to keep that one
 high-volume, low-signal-per-search step from drowning out the trade-press
@@ -175,8 +175,8 @@ front end just parses the one blob per page load.
 
 ## What a run actually costs
 
-Given the account-tracker step alone is ~98 searches, plus 13 trade-press
-fetches, plus 2-4 secondary searches, plus a full-article fetch and
+Given the account-tracker step alone is one search per watchlist company, plus a fetch per trade-press
+site, plus 2-4 secondary searches, plus a full-article fetch and
 classification pass for everything that survives triage — a normal run is
 comfortably 100+ tool calls and 20-40 minutes of wall-clock time. That's
 expected and by design (the prompt says so explicitly, so the model doesn't
@@ -191,16 +191,16 @@ does, you edit this text (via the scheduled task's settings), not a code
 file anywhere.
 
 ```text
-You are maintaining a live Postgres table called `surety_articles` in a Supabase project (project_id: acxdvzcohjayvmqdaoke) for a surety underwriter (Richie). This is a recurring job — no memory of previous runs, so follow this complete procedure each time.
+You are maintaining a live Postgres table called `surety_articles` in a Supabase project (project_id: <your-project-id>) for a surety underwriter. This is a recurring job — no memory of previous runs, so follow this complete procedure each time.
 
-GOAL: Find recent news relevant to a surety underwriter, process any user-submitted links from the surety_article_queue table, AND track news on Richie's top-accounts watchlist — inserting any new, not-already-tracked articles into the surety_articles table. This table is a permanent, append-only archive — never UPDATE or DELETE an existing row. The link column has a UNIQUE constraint, so inserting new rows with ON CONFLICT (link) DO NOTHING is the dedup mechanism (this applies globally across all sources below — trade-press sites, secondary search, queue links, and account-tracker links all share the same dedup check).
+GOAL: Find recent news relevant to a surety underwriter, process any user-submitted links from the surety_article_queue table, AND track news on a company watchlist — inserting any new, not-already-tracked articles into the surety_articles table. This table is a permanent, append-only archive — never UPDATE or DELETE an existing row. The link column has a UNIQUE constraint, so inserting new rows with ON CONFLICT (link) DO NOTHING is the dedup mechanism (this applies globally across all sources below — trade-press sites, secondary search, queue links, and account-tracker links all share the same dedup check).
 
 Table schema (public.surety_articles): id (bigint, primary key), date_found (date), article_title (text), link (text, UNIQUE), source_site (text), source_publish_date (date), region (text), relevance_category (text, one of 'Contract Surety'/'Commercial Surety'/'Both'/'General'), underwriter_value_score (smallint 1-10), score_rationale (text), summary (text), bullet_points (text — "- " prefixed lines separated by real newlines), underwriter_insights (text), flagged_by_user (boolean), related_account (text[] — an ARRAY of real company names clearly named as the subject of the article, not limited to account_watchlist; NULL if no specific company is the subject, e.g. general industry/regulatory/market-trend pieces. An article can name multiple companies, e.g. "Berkley sues Volunteers of America" → {'Berkley Insurance Company','Volunteers of America'}).
 
-STEP 1 — Check the flagged-link queue: Run select id, link, notes from public.surety_article_queue where processed = false; via Supabase execute_sql (project_id acxdvzcohjayvmqdaoke). Each row's link is HIGH PRIORITY and must be processed regardless of newsworthiness; use the notes field (if present) as context for why it was flagged.
+STEP 1 — Check the flagged-link queue: Run select id, link, notes from public.surety_article_queue where processed = false; via Supabase execute_sql (project_id <your-project-id>). Each row's link is HIGH PRIORITY and must be processed regardless of newsworthiness; use the notes field (if present) as context for why it was flagged.
 
 STEP 2 — Get existing links and the account watchlist:
-  - Run select link from public.surety_articles; via Supabase execute_sql (project_id acxdvzcohjayvmqdaoke) for dedup checks.
+  - Run select link from public.surety_articles; via Supabase execute_sql (project_id <your-project-id>) for dedup checks.
   - Run select company_name from public.account_watchlist order by company_name; to get the list of top-accounts to track.
 
 STEP 2B — Load podcast tracking state (for the "Let's Get Surety" NASBP podcast, tracked separately from articles):
@@ -234,7 +234,7 @@ STEP 4c — Flag candidate trade-publication sources: Look at the source_site/do
   - not a wire-service/press-release distributor being read under its own domain (e.g. skip StockTitan, PR Newswire, BusinessWire, GlobeNewswire — these just republish releases, they have no independent editorial beat),
   - genuinely on-beat: surety/fidelity/bonding, or closely adjacent (construction trade press, construction/surety-relevant insurance or reinsurance capacity, construction-industry legal/risk trade press) — not a general-interest or purely financial-markets outlet (e.g. don't flag Bloomberg/CNBC/Reuters/foreign stock-news aggregators — those stay as ad hoc secondary-search sources, which is by design; they're too broad-beat to add as a standing daily fetch),
   - appears to publish with some regularity (a real publication/section, not a single archived post) — a quick glance at the article's own site is enough, don't do deep research here.
-  Do NOT add anything to target_trade_publications yourself this run — only flag it for Richie's review in Step 7. Keep this quick (a sentence of judgment per candidate, not a research project) and skip it entirely if nothing this run comes from a plausible candidate — most runs will have nothing to flag here.
+  Do NOT add anything to target_trade_publications yourself this run — only flag it for the operator's review in Step 7. Keep this quick (a sentence of judgment per candidate, not a research project) and skip it entirely if nothing this run comes from a plausible candidate — most runs will have nothing to flag here.
 
 STEP 5 — Insert new rows: INSERT into public.surety_articles with all 14 columns via execute_sql, using ON CONFLICT (link) DO NOTHING. Batch multiple new articles into one multi-row INSERT (trade-press, secondary-search, and account-tracker rows can all be batched together). Escape single quotes by doubling them ('') — or use dollar-quoting ($q$...$q$) per field to sidestep escaping entirely, which is more reliable for text with lots of apostrophes/quotes. For related_account, use Postgres array literal syntax, e.g. ARRAY['Company A','Company B'] or ARRAY['Company A'] for a single company — use NULL (not an empty array, not empty string) when no specific company is the subject.
 
@@ -261,17 +261,17 @@ STEP 7B — Podcast episode tracking (NASBP's "Let's Get Surety" podcast, public
        UPDATE public.podcast_episodes SET youtube_url = '<url>', apple_podcasts_url = coalesce(apple_podcasts_url, <url_or_NULL>), spotify_url = coalesce(spotify_url, <url_or_NULL>), transcript = $tr$<full text>$tr$, transcript_status = 'complete', summary = $sm$<...>$sm$, bullet_points = $b$<...>$b$, underwriter_insights = $u$<...>$u$, relevance_category = '<...>', underwriter_value_score = <n>, guests = ARRAY[...] (or NULL), related_account = ARRAY[...] (or NULL) WHERE episode_number = <num>;
      - If the transcript truly can't be retrieved after a retry (private video, no captions, mirror site down): UPDATE public.podcast_episodes SET youtube_url = '<url>', transcript_status = 'unavailable' WHERE episode_number = <num>; and note it in Step 7.
      - Either way: UPDATE public.podcast_link_submissions SET processed = true, processed_at = now() WHERE id = <submission id>;
-     - IMPORTANT: if a youtube_url in podcast_link_submissions already matches the youtube_url on a DIFFERENT episode_number that is already 'complete', this is very likely a duplicate/misattributed submission (a human pasted the wrong link) — do not overwrite the already-complete episode. Instead, leave that submission unprocessed, and flag it explicitly in the Step 7 summary so Richie can supply the correct link for the affected episode via admin.html.
+     - IMPORTANT: if a youtube_url in podcast_link_submissions already matches the youtube_url on a DIFFERENT episode_number that is already 'complete', this is very likely a duplicate/misattributed submission (a human pasted the wrong link) — do not overwrite the already-complete episode. Instead, leave that submission unprocessed, and flag it explicitly in the Step 7 summary so the operator can supply the correct link for the affected episode via admin.html.
 
   c. OPPORTUNISTIC auto-discovery (best-effort, light-touch): For any episode still sitting at transcript_status = 'pending_link' with no submission processed in step (b) this run, you MAY try ONE WebSearch for its exact title plus "youtube" to see if the video surfaces. If a plausible youtube.com/watch URL turns up, treat it exactly like a submitted link (repeat the fetch/classify/update logic from step (b), then also skip the corresponding podcast_link_submissions step since there isn't one). This channel is small and often doesn't index well — a miss here is expected and fine; don't spend more than one search per pending episode chasing this, and never spend time on this before finishing the core article pipeline (Steps 1-6) first.
 
   Never delete or blank out an existing transcript/summary once written — if you ever need to redo one, that's a human decision, not something this automation does on its own.
 
-STEP 8 — Refresh the 6-week market analysis: After Step 7, regenerate the "6-Week Market Analysis" shown on the dashboard, WITH inline source citations tying each assertion back to specific articles AND/OR podcast episodes (the dashboard links each citation to the corresponding article card on index.html or episode card on podcasts.html). The dashboard renders Key Themes, Critical Risk Highlights, and Underwriting Implications as short bulleted/numbered lists — NOT flowing prose — so those items must stand alone and be genuinely short. Executive Summary is the one exception: it renders as a real narrative paragraph, not a bullet list — see its own rules below. The dashboard also lets Richie page back through the last several analysis posts with prev/next arrows, so each post is a permanent, individually-viewable snapshot — write every post to stand on its own, not as a diff against "the last one."
+STEP 8 — Refresh the 6-week market analysis: After Step 7, regenerate the "6-Week Market Analysis" shown on the dashboard, WITH inline source citations tying each assertion back to specific articles AND/OR podcast episodes (the dashboard links each citation to the corresponding article card on index.html or episode card on podcasts.html). The dashboard renders Key Themes, Critical Risk Highlights, and Underwriting Implications as short bulleted/numbered lists — NOT flowing prose — so those items must stand alone and be genuinely short. Executive Summary is the one exception: it renders as a real narrative paragraph, not a bullet list — see its own rules below. The dashboard also lets readers page back through the last several analysis posts with prev/next arrows, so each post is a permanent, individually-viewable snapshot — write every post to stand on its own, not as a diff against "the last one."
 
   - Query the last 6 weeks of articles, including each one's id (needed for citation links): select id, article_title, link, source_site, source_publish_date, region, relevance_category, underwriter_value_score, score_rationale, summary, underwriter_insights, related_account from public.surety_articles where coalesce(source_publish_date, date_found) >= (current_date - interval '42 days') order by coalesce(source_publish_date, date_found) asc; via execute_sql.
   - ALSO query the last 6 weeks of podcast episodes that have a completed transcript: select id, episode_number, title, publish_date, link, relevance_category, underwriter_value_score, summary, underwriter_insights, guests, related_account from public.podcast_episodes where transcript_status = 'complete' and publish_date >= (current_date - interval '42 days') order by publish_date asc; via execute_sql. It's normal and fine for this to return zero rows on many runs (episodes publish roughly biweekly and transcripts often lag behind on a link, unlike articles) — the analysis should read fine grounded on articles alone when that happens; only weave in episode-sourced material when there actually are completed episodes in the window.
-  - ALSO query the analyses you've written over the previous 2 weeks, to check today's conclusions against them: select analysis_date, inserted_at, analysis from public.market_analysis where inserted_at >= (now() - interval '14 days') order by inserted_at asc; via execute_sql. Read through every row returned (executive_summary, key_themes, critical_risks, underwriting_implications) — this is your only memory of what you've previously told Richie, since each run otherwise starts fresh. It's normal for this to return zero rows early in the table's life; when it does, skip the comparison and leave notable_shifts as an empty array.
+  - ALSO query the analyses you've written over the previous 2 weeks, to check today's conclusions against them: select analysis_date, inserted_at, analysis from public.market_analysis where inserted_at >= (now() - interval '14 days') order by inserted_at asc; via execute_sql. Read through every row returned (executive_summary, key_themes, critical_risks, underwriting_implications) — this is your only memory of what you've previously told the reader, since each run otherwise starts fresh. It's normal for this to return zero rows early in the table's life; when it does, skip the comparison and leave notable_shifts as an empty array.
   - Read through the full combined article/episode set (don't sample) and write a fresh structured analysis grounded only in those articles and episodes — do not carry forward or reference wording from any previous analysis for the main sections (period_label through underwriting_implications). As you write each item, track exactly which source(s) — article id(s), episode id(s), or both — support it; every substantive claim needs at least one real citation; never invent or guess an id.
   - Produce a JSON object with exactly these keys:
     - "period_label": string, "MM/DD-MM/DD, YYYY" spanning the earliest to latest date across both queried sets
@@ -289,7 +289,7 @@ STEP 8 — Refresh the 6-week market analysis: After Step 7, regenerate the "6-W
   - Insert it: insert into public.market_analysis (analysis_date, analysis) values (current_date, '<the JSON object>'::jsonb); via execute_sql — this table is also append-only (each run adds a new row; the dashboard's prev/next arrows page back through the most recent several rows by inserted_at, defaulting to the newest), so do not update or delete prior rows.
   - Add one line to the Step 7 summary noting the market analysis was refreshed, the period_label, article_count, and episode_count — and if notable_shifts is non-empty, name what diverged in one line.
 
-Do not ask clarifying questions — this is an unattended scheduled run. Make reasonable judgment calls and proceed. Given the account-tracker step now covers up to 100 companies plus a 13-site trade-press sweep, this run will take meaningfully longer than a simple search — that's expected; work through the full list rather than stopping partway. Do the article pipeline (Steps 1-7) and podcast tracking (Step 7B) in full before Step 8, since Step 8 depends on both.
+Do not ask clarifying questions — this is an unattended scheduled run. Make reasonable judgment calls and proceed. Given the account-tracker step now covers the full company watchlist plus the trade-press sweep, this run will take meaningfully longer than a simple search — that's expected; work through the full list rather than stopping partway. Do the article pipeline (Steps 1-7) and podcast tracking (Step 7B) in full before Step 8, since Step 8 depends on both.
 ```
 
 ## Reusing this pattern for a new topic
@@ -312,10 +312,10 @@ of what's specific to surety:
    bookkeeping — `UNIQUE` + `ON CONFLICT DO NOTHING` on whatever your natural
    identity key is (a URL, an external ID, whatever).
 5. **Put a stricter score floor on your highest-volume, lowest-signal search
-   step** (here, the 98-company sweep) so it can't drown out your
+   step** (here, the company sweep) so it can't drown out your
    higher-precision sources.
 6. **Let new sources be *suggested*, not self-added.** The model flags
    candidate sources in its summary; a human decides whether to add the row.
-7. **Schedule it as a Claude scheduled task**, not a script — cron
+7. **Schedule it as a scheduled LLM task**, not a script — cron
    expression, a prompt, and the tool access it needs (Supabase/whatever DB,
    WebSearch/WebFetch or your domain's equivalent). No server to run.
