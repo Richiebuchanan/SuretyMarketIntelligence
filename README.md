@@ -1,16 +1,14 @@
 # Surety Market Intelligence
 
-A live dashboard for tracking surety-relevant industry news and top-account risk signals, built for surety industry underwriting use. Automated news discovery and analysis is handled by Claude; this repo currently hosts the front-end dashboard, with the goal of eventually managing the full pipeline (site + automation config) from here.
-
-**Live site:** https://richiebuchanan.github.io/SuretyMarketIntelligence/
+A live dashboard for tracking surety-relevant industry news and company risk signals, built for surety underwriters. Automated news discovery and analysis is handled by an LLM (large language model); this repo currently hosts the front-end dashboard, with the goal of eventually managing the full pipeline (site + automation config) from here.
 
 ## What this is
 
 A single-page dashboard that reads live from a Supabase database and shows:
 
-- **Article ledger** — surety and construction-industry news, each scored 1–10 for underwriting relevance, with category (Contract Surety / Commercial Surety / Both / General), region, source, and a short AI-generated summary and underwriter insight per article. Filterable by category, region, source, company, date range, priority score, and free-text search.
+- **Article ledger** — surety and construction-industry news, each scored 1–10 for underwriting relevance, with category (Contract Surety / Commercial Surety / Both / General), region, source, and a short LLM-generated summary and underwriter insight per article. Filterable by category, region, source, company, date range, priority score, and free-text search.
 - **6-Week Market Analysis** — a periodically-refreshed executive summary (key themes, critical risks, underwriting implications, and any notable shifts from the prior two weeks of analyses) synthesized from the recent article and podcast-episode set, with every claim cited back to a specific source. Prev/next arrows page back through the last several posts, each labeled with the date and time it was generated.
-- **Company tagging** — articles are tagged with the real company/companies they're about (not limited to any fixed list), so news on a specific account can be isolated via the Company filter.
+- **Company tagging** — articles are tagged with the real company/companies they're about (not limited to any fixed list), so news on a specific company can be isolated via the Company filter.
 
 All data — articles, the market analysis, and the tracked-company list — lives in Supabase and updates automatically. There is nothing to redeploy when new data comes in; only actual design or code changes to the page require a new commit here.
 
@@ -18,14 +16,14 @@ All data — articles, the market analysis, and the tracked-company list — liv
 
 ```
 ┌─────────────────────┐
-│  Claude (scheduled   │  Runs daily at 10:00 UTC. Searches for new
-│  task, once daily)   │  industry news and news on watchlist companies,
-└──────────┬───────────┘  scores each article, writes into Supabase.
+│  LLM (scheduled      │  Runs daily. Searches for new industry news
+│  task, once daily)   │  and news on watchlist companies, scores each
+└──────────┬───────────┘  article, writes into Supabase.
            │
            ▼
 ┌─────────────────────┐
 │      Supabase        │  Postgres database + REST API (PostgREST).
-│  (acxdvzcohjayvmqdaoke)│  3 of 5 tables are public read-only (anon key,
+│  (your project)       │  3 of 5 tables are public read-only (anon key,
 └──────────┬───────────┘  no auth); 2 back-office tables are locked down
            │              entirely — see "Supabase schema" below.
            │  (browser reads directly, client-side, on page load
@@ -40,7 +38,7 @@ All data — articles, the market analysis, and the tracked-company list — liv
 
 **Why GitHub Pages, not Netlify or Supabase Edge Functions:** both were tried first. Netlify's deploy credential kept failing with an unrecovered 403. Supabase Edge Functions turned out to have an undocumented platform restriction — `GET` requests returning `text/html` are silently rewritten to `text/plain` on their default domain, so HTML can't be served from a Supabase Function without a paid custom domain. GitHub Pages has no such restriction and is free.
 
-## Supabase schema (project `acxdvzcohjayvmqdaoke`)
+## Supabase schema
 
 Five tables total. Full column-by-column DDL, including the exact RLS
 policies, lives in [`schema.sql`](./schema.sql) — this section is the quick
@@ -81,7 +79,7 @@ The dashboard shows the most recent row by default; prev/next arrows page back t
 |---|---|---|
 | `company_name` | text | unique |
 
-The list of companies the daily task specifically searches news for (in addition to general industry search). Currently 98 companies. Not the same as `related_account` on `surety_articles` — articles can be tagged with any real company, watchlist or not; this table only drives which companies get a dedicated daily search pass.
+The list of companies the daily task specifically searches news for (in addition to general industry search). Not the same as `related_account` on `surety_articles` — articles can be tagged with any real company, watchlist or not; this table only drives which companies get a dedicated daily search pass.
 
 **Back-office only** (RLS enabled, *zero* policies — invisible to the public anon key, read/written only via direct SQL or the scheduled task's own connection):
 
@@ -104,14 +102,14 @@ A Postgres table, not a Google Sheet — rows go in via direct SQL today. Anythi
 | `notes` | text | operational notes the automation reads and follows (dead feed paths, staleness quirks, etc.) |
 | `active` | boolean | |
 
-The standing list of trade-press sites fetched every run — currently 13 (10 RSS, 3 scraped listing pages). The automation *suggests* new candidates in its run summary when it stumbles on an on-beat source not yet in this table, but never adds one itself; someone has to approve the INSERT.
+The standing list of trade-press sites fetched every run (RSS feeds and scraped listing pages). The automation *suggests* new candidates in its run summary when it stumbles on an on-beat source not yet in this table, but never adds one itself; someone has to approve the INSERT.
 
 ## The daily automation
 
-A Claude scheduled task (configured in Claude's Tasks/Routines settings, cron `0 10 * * *` — not yet version-controlled as a repo file, though its exact current text is mirrored in [`AUTOMATION.md`](./AUTOMATION.md) for reference) runs once a day and:
+A scheduled LLM task (configured in the scheduler's settings, cron `0 10 * * *` — not yet version-controlled as a repo file, though its exact current text is mirrored in [`AUTOMATION.md`](./AUTOMATION.md) for reference) runs once a day and:
 1. Processes any manually-flagged links from the `surety_article_queue` table
-2. Checks the 13-site trade-press list directly, then searches general business press (CNBC, Bloomberg) for anything else surety-relevant
-3. Searches for news on each of the ~98 companies in `account_watchlist`
+2. Checks the trade-press list directly, then searches general business press (CNBC, Bloomberg) for anything else surety-relevant
+3. Searches for news on each company in `account_watchlist`
 4. Scores, classifies, and tags every new article, inserting into `surety_articles`
 5. Flags (but doesn't add) any promising new trade-pub sources for review
 6. Regenerates the `market_analysis` row from the last 6 weeks of articles and podcast episodes, with inline citations — after checking its draft conclusions against the previous two weeks of analyses and flagging anything that meaningfully diverges
@@ -122,13 +120,13 @@ A Claude scheduled task (configured in Claude's Tasks/Routines settings, cron `0
 
 There's no build step — `index.html` is the whole deployable artifact. To make a change:
 
-1. Edit `index.html` (or hand the file to Claude to make the change and return an updated copy)
+1. Edit `index.html` (or hand the file to an LLM to make the change and return an updated copy)
 2. Commit the updated file to `main` — GitHub Pages auto-redeploys within a minute or two
 3. No changes here are needed for new data — that flows in automatically via Supabase
 
 ## Roadmap
 
-- [ ] Bring the scheduled-task configuration into this repo as a tracked file (currently lives only in Claude's Tasks UI — `AUTOMATION.md` is a manually-kept mirror of it, so it can drift)
+- [ ] Bring the scheduled-task configuration into this repo as a tracked file (currently lives only in the scheduler's UI — `AUTOMATION.md` is a manually-kept mirror of it, so it can drift)
 - [ ] Consider GitHub Actions for deploy automation as the codebase grows beyond a single HTML file
 - [ ] Add DB-level `CHECK` constraints for `relevance_category` and `underwriter_value_score` (currently prompt-enforced only — see `schema.sql`)
-- [ ] `account_watchlist` is at 98 of the target ~100 top accounts — close it out
+- [ ] Keep `account_watchlist` current as companies of interest change
